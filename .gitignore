@@ -1,6 +1,9 @@
 # ─── Kiro (contexto local del IDE) ────────────
 .kiro/
 
+# ─── Docs (referencia interna, no se versiona) ─
+docs/
+
 # ─── Variables de entorno ──────────────────────
 .env
 .env.*
