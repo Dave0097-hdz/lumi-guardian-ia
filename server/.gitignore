@@ -1,0 +1,18 @@
+# ─── Dependencias ─────────────────────────────
+node_modules/
+
+# ─── Build ────────────────────────────────────
+dist/
+
+# ─── Variables de entorno locales ─────────────
+.env
+
+# ─── Prisma (generado, no versionar) ─────────
+# El client generado vive en node_modules, no se versiona.
+# Las migraciones SÍ se versionan (prisma/migrations/).
+
+# ─── Logs ─────────────────────────────────────
+*.log
+
+# ─── Testing ─────────────────────────────────
+coverage/

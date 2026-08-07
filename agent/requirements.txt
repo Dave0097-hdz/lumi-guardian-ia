@@ -1,0 +1,10 @@
+# LUMI Guardian Agent - Dependencies
+# Las dependencias definitivas las define el compañero responsable del agente.
+# Este archivo es placeholder para que el Dockerfile pueda hacer pip install.
+#
+# Dependencias esperadas según tech.md:
+# psutil
+# httpx
+# pydantic
+# fastapi (cuando se implemente la API de control)
+# uvicorn (cuando se implemente la API de control)

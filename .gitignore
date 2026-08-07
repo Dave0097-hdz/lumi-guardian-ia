@@ -1,0 +1,47 @@
+# ─── Kiro (contexto local del IDE) ────────────
+.kiro/
+
+# ─── Variables de entorno ──────────────────────
+.env
+.env.*
+!.env.example
+
+# ─── Dependencias ─────────────────────────────
+node_modules/
+
+# ─── Build ────────────────────────────────────
+dist/
+build/
+
+# ─── Logs ─────────────────────────────────────
+logs/
+*.log
+
+# ─── Python ───────────────────────────────────
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+
+# ─── SQLite (agente) ─────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+
+# ─── Docker ───────────────────────────────────
+postgres-data/
+
+# ─── Certificados / secretos ──────────────────
+*.pem
+*.key
+
+# ─── Testing ─────────────────────────────────
+coverage/
+
+# ─── IDE ──────────────────────────────────────
+.vscode/
+.idea/
+
+# ─── OS ───────────────────────────────────────
+.DS_Store
+Thumbs.db

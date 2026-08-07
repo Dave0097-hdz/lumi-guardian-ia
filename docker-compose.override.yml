@@ -1,0 +1,8 @@
+# Overrides para desarrollo local
+# Este archivo se aplica automáticamente con docker-compose up
+services:
+  server:
+    command: pnpm start:debug
+
+    environment:
+      NODE_ENV: development

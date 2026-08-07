@@ -1,0 +1,52 @@
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: lumi-postgres
+
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    ports:
+      - "5433:5432" # Cambia a 5432:5432 si no tienes PostgreSQL local
+
+    volumes:
+      - lumi-pgdata:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  server:
+    container_name: lumi-server
+
+    build:
+      context: ./server
+      dockerfile: Dockerfile.dev
+
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    environment:
+      NODE_ENV: development
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    ports:
+      - "3000:3000"
+      - "9229:9229"
+
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+
+volumes:
+  lumi-pgdata:

@@ -1,0 +1,386 @@
+// LUMI Guardián AI — schema.prisma
+// v3 — agrega tecnicaMitre y paisOrigen a Alerta (rescatados de la documentación
+// antigua). El resto es idéntico a la versión anterior ya validada.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum ProveedorVPS {
+  DIGITAL_OCEAN
+  AWS
+  LINODE
+  OTRO
+}
+
+enum EstadoVPS {
+  PENDIENTE_INSTALACION
+  ACTIVO
+  DESCONECTADO
+  MANTENIMIENTO
+  ELIMINADO
+}
+
+enum EstadoGeneral {
+  SEGURO
+  ADVERTENCIA
+  BAJO_ATAQUE
+}
+
+enum TipoAlerta {
+  BRUTE_FORCE
+  SQL_INJECTION
+  HTTP_FLOOD
+  IP_MALICIOSA
+  ANOMALIA_PROCESO
+  ESCANEO_PUERTOS
+  ESCALACION_DATOS
+}
+
+enum SeveridadAlerta {
+  BAJA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+enum EstadoAlerta {
+  DETECTADA
+  REVISADA
+  FALSO_POSITIVO
+  RESUELTA
+}
+
+enum AccionTomada {
+  NOTIFICADO
+  SUGERENCIA_ENVIADA
+  BLOQUEADO_AUTOMATICAMENTE
+  AISLADO_AUTOMATICAMENTE
+  SIN_ACCION
+}
+
+enum NivelAutonomia {
+  SOLO_ALERTAR
+  SUGERIR
+  GUARDIAN_TOTAL
+}
+
+enum TipoBloqueo {
+  TEMPORAL
+  PERMANENTE
+}
+
+enum EstadoBloqueo {
+  BLOQUEADO
+  DESBLOQUEADO
+  FALSO_POSITIVO
+}
+
+enum EstadoAislamiento {
+  AISLADO
+  LIBERADO
+  TERMINADO
+  FALSO_POSITIVO
+}
+
+// ─────────────────────────────────────────────
+// MODELOS
+// ─────────────────────────────────────────────
+
+model User {
+  id     String @id @default(uuid())
+  nombre String @db.VarChar(100)
+  email  String @unique @db.VarChar(255)
+
+  passwordHash String
+
+  emailVerified Boolean @default(false)
+  activo        Boolean @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  vps VPS[]
+
+  refreshTokens  RefreshToken[]
+  revokedTokens  RevokedToken[]
+  passwordResets PasswordResetToken[]
+
+  auditLogs    AuditLog[]
+  bloqueos     Bloqueo[]
+  aislamientos Aislamiento[]
+
+  whitelistIps WhitelistIP[]
+
+  @@index([email])
+  @@map("users")
+}
+
+// ─── AUTH ─────────────────────────────────────
+
+model RefreshToken {
+  id         String    @id @default(uuid())
+  userId     String
+  tokenHash  String    @unique
+  // Referencia al id del token que reemplazó a este, para trazabilidad de rotación.
+  replacedBy String?
+  deviceInfo String?   @db.VarChar(255)
+  ipOrigen   String?   @db.VarChar(45)
+  expiresAt  DateTime
+  usedAt     DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model RevokedToken {
+  id        String   @id @default(uuid())
+  jti       String   @unique
+  userId    String
+  revokedAt DateTime @default(now())
+  expiresAt DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([jti])
+  @@index([expiresAt])
+  @@map("revoked_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
+
+// ─── VPS ──────────────────────────────────────
+
+model VPS {
+  id               String       @id @default(uuid())
+  userId           String
+  nombre           String       @db.VarChar(100)
+  ip               String       @db.VarChar(45)
+  sistemaOperativo String       @db.VarChar(100)
+  proveedor        ProveedorVPS
+  estado           EstadoVPS    @default(PENDIENTE_INSTALACION)
+  agentTokenHash   String       @unique
+  agenteVersion    String?      @db.VarChar(20)
+  ultimoHeartbeat  DateTime?
+  descripcion      String?      @db.VarChar(500)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  deletedAt        DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  configuracion Configuracion?
+
+  alertas      Alerta[]
+  bloqueos     Bloqueo[]
+  aislamientos Aislamiento[]
+  metricas     Metrica[]
+  auditLogs    AuditLog[]
+  whitelistIps WhitelistIP[]
+
+  @@unique([userId, ip])
+  @@index([userId])
+  @@index([ip])
+  @@index([estado])
+  @@index([ultimoHeartbeat])
+  @@map("vps")
+}
+
+// ─── ALERTAS ──────────────────────────────────
+
+model Alerta {
+  id                 String          @id @default(uuid())
+  vpsId              String
+  tipo               TipoAlerta
+  severidad          SeveridadAlerta
+  ipOrigen           String?
+  // Agregado v3: código MITRE ATT&CK (ej. "T1110" = Brute Force). Opcional,
+  // se llena cuando el motor de reglas del agente lo determine.
+  tecnicaMitre       String?         @db.VarChar(20)
+  // Agregado v3: país de origen de la IP atacante (geolocalización).
+  // Opcional — requiere una fuente de geolocalización que aún no está definida.
+  paisOrigen         String?         @db.VarChar(100)
+  descripcionSimple  String
+  descripcionTecnica String
+  accionTomada       AccionTomada
+  evidencia          Json
+  estado             EstadoAlerta    @default(DETECTADA)
+  detectadoEn        DateTime        @default(now())
+  revisadoEn         DateTime?
+
+  vps VPS @relation(fields: [vpsId], references: [id], onDelete: Cascade)
+
+  bloqueos     Bloqueo[]
+  aislamientos Aislamiento[]
+
+  @@index([vpsId])
+  @@index([estado])
+  @@index([severidad])
+  @@index([vpsId, detectadoEn(sort: Desc)])
+  @@map("alertas")
+}
+
+// ─── BLOQUEOS ─────────────────────────────────
+
+model Bloqueo {
+  id              String        @id @default(uuid())
+  vpsId           String
+  userId          String?
+  alertaId        String?
+  ip              String        @db.VarChar(50)
+  tipo            TipoBloqueo
+  estado          EstadoBloqueo @default(BLOQUEADO)
+  motivo          String        @db.VarChar(500)
+  esFalsoPositivo Boolean       @default(false)
+  bloqueadoEn     DateTime      @default(now())
+  desbloqueadoEn  DateTime?
+  expiresAt       DateTime?
+
+  vps    VPS     @relation(fields: [vpsId], references: [id], onDelete: Cascade)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  alerta Alerta? @relation(fields: [alertaId], references: [id], onDelete: SetNull)
+
+  @@index([vpsId])
+  @@index([ip])
+  @@index([estado])
+  @@index([expiresAt])
+  @@index([vpsId, ip, estado])
+  @@map("bloqueos")
+}
+
+// ─── AISLAMIENTO ──────────────────────────────
+
+model Aislamiento {
+  id            String            @id @default(uuid())
+  vpsId         String
+  userId        String?
+  alertaId      String?
+  pid           Int
+  nombreProceso String
+  motivo        String
+  estado        EstadoAislamiento
+  aisladoEn     DateTime          @default(now())
+  liberadoEn    DateTime?
+
+  vps  VPS   @relation(fields: [vpsId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  alerta Alerta? @relation(fields: [alertaId], references: [id], onDelete: SetNull)
+
+  @@index([vpsId])
+  @@map("aislamientos")
+}
+
+// ─── MÉTRICAS ─────────────────────────────────
+
+model Metrica {
+  id                String        @id @default(uuid())
+  vpsId             String
+  cpuPorcentaje     Float
+  ramUsadaMB        Float
+  ramTotalMB        Float
+  discoUsadaGB      Float
+  discoTotalGB      Float
+  discoPorcentaje   Float
+  requestsPorMinuto Float
+  procesosActivos   Int
+  conexionesActivas Int
+  estadoGeneral     EstadoGeneral
+  registradoEn      DateTime      @default(now())
+
+  vps VPS @relation(fields: [vpsId], references: [id], onDelete: Cascade)
+
+  @@index([vpsId, registradoEn(sort: Desc)])
+  @@index([registradoEn])
+  @@map("metricas")
+}
+
+// ─── CONFIGURACIÓN ────────────────────────────
+
+model Configuracion {
+  id               String            @id @default(uuid())
+  vpsId            String            @unique
+  nivelAutonomia   NivelAutonomia    @default(SOLO_ALERTAR)
+  notifEmail       Boolean           @default(true)
+  notifDashboard   Boolean           @default(true)
+  severidadesNotif SeveridadAlerta[]
+  umbralCpuAlerta  Float             @default(85)
+  umbralRamAlerta  Float             @default(90)
+  updatedAt        DateTime          @updatedAt
+
+  vps VPS @relation(fields: [vpsId], references: [id], onDelete: Cascade)
+
+  @@map("configuraciones")
+}
+
+// ─── WHITELIST ────────────────────────────────
+
+model WhitelistIP {
+  id       String   @id @default(uuid())
+  userId   String
+  vpsId    String?
+  ip       String   @db.VarChar(45)
+  motivo   String?  @db.VarChar(255)
+  creadoEn DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vps  VPS? @relation(fields: [vpsId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, vpsId, ip])
+  @@index([userId])
+  @@index([vpsId])
+  @@map("whitelist_ips")
+}
+
+model AuditLog {
+  id String @id @default(uuid())
+
+  userId String?
+  vpsId  String?
+
+  entidad   String
+  entidadId String?
+
+  accion String
+
+  datosAntes   Json?
+  datosDespues Json?
+
+  ipRequest String?
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  vps  VPS?  @relation(fields: [vpsId], references: [id], onDelete: SetNull)
+
+  creadoEn DateTime @default(now())
+
+  @@index([creadoEn(sort: Desc)])
+  @@map("audit_log")
+}
