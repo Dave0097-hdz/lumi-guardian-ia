@@ -37,16 +37,25 @@ export class VpsService {
     const saltRounds = this.config.get<number>('bcrypt.saltRounds') ?? 12;
     const agentTokenHash = await bcrypt.hash(agentTokenPlain, saltRounds);
 
-    const vps = await this.prisma.vPS.create({
-      data: {
-        userId,
-        nombre: dto.nombre,
-        ip: dto.ip,
-        sistemaOperativo: dto.sistemaOperativo,
-        proveedor: dto.proveedor,
-        descripcion: dto.descripcion,
-        agentTokenHash,
-      },
+    const vps = await this.prisma.$transaction(async (tx) => {
+      const newVps = await tx.vPS.create({
+        data: {
+          userId,
+          nombre: dto.nombre,
+          ip: dto.ip,
+          sistemaOperativo: dto.sistemaOperativo,
+          proveedor: dto.proveedor,
+          descripcion: dto.descripcion,
+          agentTokenHash,
+        },
+      });
+
+      // Crear Configuracion default (1:1 con VPS) en la misma transacción
+      await tx.configuracion.create({
+        data: { vpsId: newVps.id },
+      });
+
+      return newVps;
     });
 
     const installScript = this.generateInstallScript(
