@@ -10,10 +10,14 @@ RUN mkdir -p /var/log/nginx && \
     touch /var/log/auth.log /var/log/nginx/access.log
 
 WORKDIR /app
+
 COPY requirements.txt .
 RUN pip3 install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Directorios de runtime que el agente espera
+RUN mkdir -p logs data config
+
 # Variables se inyectan vía docker-compose environment, NUNCA aquí
-CMD ["python3", "-m", "src.main"]
+CMD ["python3", "main.py"]
