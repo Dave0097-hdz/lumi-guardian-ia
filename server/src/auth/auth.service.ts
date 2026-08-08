@@ -84,6 +84,10 @@ export class AuthService {
     }
 
     async refresh(refreshToken: string) {
+        if (!refreshToken) {
+            throw new UnauthorizedException('Token de refresh no proporcionado');
+        }
+
         const tokenHash = this.hashToken(refreshToken);
 
         const storedToken = await this.prisma.refreshToken.findUnique({
@@ -142,6 +146,10 @@ export class AuthService {
     }
 
     async logout(refreshToken: string) {
+        if (!refreshToken) {
+            return { message: 'Sesión cerrada correctamente' };
+        }
+
         const tokenHash = this.hashToken(refreshToken);
 
         const storedToken = await this.prisma.refreshToken.findUnique({
@@ -174,7 +182,8 @@ export class AuthService {
         const refreshTokenPlain = crypto.randomBytes(32).toString('hex');
         const tokenHash = this.hashToken(refreshTokenPlain);
 
-        const refreshExpiresIn = this.config.get<string>('jwt.refreshExpiresIn') ?? '7d';
+        const refreshExpiresIn =
+            this.config.get<string>('jwt.refreshExpiresIn') ?? '7d';
         const expiresAt = this.calculateExpiry(refreshExpiresIn);
 
         const refreshTokenRecord = await this.prisma.refreshToken.create({
@@ -201,7 +210,6 @@ export class AuthService {
         const match = duration.match(/^(\d+)([dhms])$/);
 
         if (!match) {
-            // Default: 7 días
             return new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
         }
 

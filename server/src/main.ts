@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
+import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ConfigService } from '@nestjs/config';
@@ -9,7 +10,7 @@ import { ConfigService } from '@nestjs/config';
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule, {
-    logger: ['error', 'warn', 'log', 'debug']
+    logger: ['error', 'warn', 'log', 'debug'],
   });
 
   const configService = app.get(ConfigService);
@@ -22,14 +23,17 @@ async function bootstrap() {
   // Headers de seguridad HTTP
   app.use(helmet());
 
+  // Cookie parser — para leer refreshToken de HttpOnly cookies
+  app.use(cookieParser());
+
   // CORS
   app.enableCors({
     origin:
       nodeEnv === 'production'
-      ? [process.env.FRONTEND_URL ?? '']
-      : ['http://localhost:4200'], // Angular dev server
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT','DELETE', 'PATCH', 'OPTIONS'],
+        ? [process.env.FRONTEND_URL ?? '']
+        : ['http://localhost:4200'],
+    credentials: true, // Importante: permite envío de cookies cross-origin
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   });
 
   // Validación global de DTOs
@@ -40,7 +44,7 @@ async function bootstrap() {
       transform: true,
       transformOptions: {
         enableImplicitConversion: true,
-      }
+      },
     }),
   );
 
@@ -53,12 +57,12 @@ async function bootstrap() {
     .setDescription('API REST — Plataforma de ciberseguridad autónoma para VPS')
     .setVersion('3.0')
     .addBearerAuth()
+    .addCookieAuth('refreshToken')
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api/docs', app, document);
 
-  //const port = 3000;
   await app.listen(port);
   logger.log(`LUMI Backend corriendo en: http://localhost:${port}/api/v1`);
   logger.log(`Ambiente: ${nodeEnv}`);
