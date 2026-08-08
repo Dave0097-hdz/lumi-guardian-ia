@@ -9,6 +9,7 @@ import { AuthModule } from './auth/auth.module';
 import { VpsModule } from './vps/vps.module';
 import { AgentModule } from './agent/agent.module';
 import { ConfiguracionModule } from './configuracion/configuracion.module';
+import { AlertasModule } from './alertas/alertas.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { ConfiguracionModule } from './configuracion/configuracion.module';
     VpsModule,
     AgentModule,
     ConfiguracionModule,
+    AlertasModule,
   ],
 })
 export class AppModule { }
