@@ -91,16 +91,11 @@ export class VpsService {
       throw new NotFoundException('VPS no encontrado');
     }
 
-    // Al soft-delete, mutamos la IP para liberar el unique constraint [userId, ip]
-    // Esto permite que el usuario registre la misma IP de nuevo en el futuro.
-    const deletedIp = `deleted_${Date.now()}_${vps.ip}`;
-
     await this.prisma.vPS.update({
       where: { id: vpsId },
       data: {
         deletedAt: new Date(),
         estado: 'ELIMINADO',
-        ip: deletedIp,
       },
     });
 

@@ -1,4 +1,5 @@
 import os
+import sys
 import logging
 from urllib.parse import urljoin
 
@@ -14,12 +15,21 @@ VARIABLES_REQUERIDAS = [
 class AgentConfig:
 
     def __init__(self):
-        faltantes = [v for v in VARIABLES_REQUERIDAS if not os.environ.get(v)]
-        if faltantes:
+        presentes = [v for v in VARIABLES_REQUERIDAS if os.environ.get(v)]
+
+        if len(presentes) == 0:
             raise RuntimeError(
-                f"Faltan variables de entorno obligatorias: {', '.join(faltantes)}. "
-                "El agente no puede identificarse contra el backend."
+                "Sin credenciales de agente configuradas — operando en modo local"
             )
+
+        if len(presentes) < len(VARIABLES_REQUERIDAS):
+            faltantes = [v for v in VARIABLES_REQUERIDAS if v not in presentes]
+            logger.critical(
+                "Configuración de agente incompleta — faltan: %s. "
+                "Esto es un error de configuración, no modo local intencional.",
+                ", ".join(faltantes)
+            )
+            sys.exit(1)
 
         self.vps_id      = os.environ["LUMI_VPS_ID"]
         self.token       = os.environ["LUMI_AGENT_TOKEN"]
@@ -44,7 +54,7 @@ class AgentConfig:
 
     def headers(self) -> dict:
         return {
-            "Authorization": f"Agent {self.token}",  # Agent, no Bearer
-            "X-Vps-Id":      self.vps_id,            # sin el prefijo Lumi
+            "Authorization": f"Bearer {self.token}",
+            "X-Lumi-Vps-Id": self.vps_id,
             "Content-Type":  "application/json",
         }

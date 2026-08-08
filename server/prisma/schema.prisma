@@ -205,7 +205,10 @@ model VPS {
   auditLogs    AuditLog[]
   whitelistIps WhitelistIP[]
 
-  @@unique([userId, ip])
+  // Unicidad real: índice parcial en PostgreSQL (WHERE "deletedAt" IS NULL).
+  // Prisma no soporta WHERE en @@unique, así que la unicidad vive en la migración SQL.
+  // Este @@index es solo para performance de queries; el constraint lo maneja la BD.
+  @@index([userId, ip])
   @@index([userId])
   @@index([ip])
   @@index([estado])
