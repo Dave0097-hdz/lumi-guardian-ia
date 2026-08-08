@@ -7,6 +7,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { VpsModule } from './vps/vps.module';
+import { AgentModule } from './agent/agent.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { VpsModule } from './vps/vps.module';
     HealthModule,
     AuthModule,
     VpsModule,
+    AgentModule,
   ],
 })
 export class AppModule { }
