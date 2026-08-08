@@ -1,45 +1,38 @@
-import os
 import time
 import logging
 import requests
-from lumi_agent.core.storage import Storage
+from lumi_agent.core.agent_config import AgentConfig
 
 logger = logging.getLogger(__name__)
 
-
 MAX_REINTENTOS   = 4
-BACKOFF_BASE_SEG = 1   # 1s, 2s, 4s, 8s
+BACKOFF_BASE_SEG = 1
 
 
 class AgenteSender:
+    """
+    Envía métricas, alertas y heartbeats al backend.
+    La identidad viene de AgentConfig (variables de entorno).
+    """
 
-    def __init__(self, config: dict):
-        self.url_metricas = config["backend"]["url_metricas"]
-        self.url_alerta   = config["backend"]["url_alerta"]
+    def __init__(self, agent_config: AgentConfig):
+        self.cfg = agent_config
 
-        # viene siempre de la variable del entorno
-        self.agent_token    = os.environ.get("AGENT_TOKEN")
-        self.internal_key   = os.environ.get("INTERNAL_SECRET_KEY")
-
-        if not self.agent_token or not self.internal_key:
-            raise RuntimeError(
-                "AGENT_TOKEN e INTERNAL_SECRET_KEY deben estar "
-                "definidos como variables de entorno"
-            )
-
-    def _enviar_con_retry(self, url: str, payload: dict, headers: dict) -> bool:
-
-        #intentamos enviar elpayload, si este falla se reintenta con el  backoof, retorna tru si tiene exito, y falso si se acaban los intentos
-        
+    def _enviar_con_retry(self, url: str, payload: dict) -> bool:
         for intento in range(MAX_REINTENTOS):
             try:
-                respuesta = requests.post(url, json=payload, headers=headers, timeout=10)
-
-                if respuesta.status_code == 200 or respuesta.status_code == 201 :
+                respuesta = requests.post(
+                    url,
+                    json=payload,
+                    headers=self.cfg.headers(),
+                    timeout=10
+                )
+                if respuesta.status_code in (200, 201):
                     return True
-                else :
-                    logging.error("Fallo HTTP %s. Respuesta: %s", respuesta.status_code, respuesta.text)
-
+                logger.error(
+                    "Fallo HTTP %s en %s. Respuesta: %s",
+                    respuesta.status_code, url, respuesta.text
+                )
             except requests.exceptions.RequestException as e:
                 espera = BACKOFF_BASE_SEG * (2 ** intento)
                 logger.warning(
@@ -51,46 +44,83 @@ class AgenteSender:
         logger.error("Agotados los reintentos para %s", url)
         return False
 
+    def _calcular_estado(self, payload: dict) -> str:
+        cpu = payload.get("cpu_pct", 0)
+        ram = payload.get("ram_pct", 0)
+        if cpu > 90 or ram > 90:
+            return "BAJO_ATAQUE"
+        if cpu > 70 or ram > 70:
+            return "ADVERTENCIA"
+        return "SEGURO"
+
+    def enviar_heartbeat(self) -> bool:
+        payload = {"agenteVersion": "1.0.0"}
+        exito = self._enviar_con_retry(self.cfg.url_heartbeat, payload)
+        if exito:
+            logger.info("Heartbeat enviado correctamente al backend")
+        return exito
+
     def enviar_metrica(self, evento: dict) -> bool:
         payload = evento.get("payload", {})
-        payload_david = {
-            "cpuPorcentaje":    payload.get("cpu_pct", 0),
-            "ramUsadaMB":       payload.get("ram_used_mb", 0),
-            "discoPorcentaje":  payload.get("disco_pct", 0),
-            "agenteVersion":    "1.0.0",
+        payload_backend = {
+            "cpuPorcentaje":     payload.get("cpu_pct", 0),
+            "ramUsadaMB":        payload.get("ram_used_mb", 0),
+            "ramTotalMB":        payload.get("ram_total_mb", 0),
+            "discoUsadaGB":      round(payload.get("disco_used_mb", 0) / 1024, 2),
+            "discoTotalGB":      round(payload.get("disco_total_mb", 0) / 1024, 2),
+            "discoPorcentaje":   payload.get("disco_pct", 0),
+            "requestsPorMinuto": payload.get("requests_por_minuto", 0),
+            "procesosActivos":   len(payload.get("procesos", [])),
+            "conexionesActivas": payload.get("conexiones_activas", 0),
+            "estadoGeneral":     self._calcular_estado(payload),
         }
-        headers = {
-            "Authorization": f"Bearer {self.agent_token}",
-            "Content-Type":  "application/json"
-        }
-        return self._enviar_con_retry(self.url_metricas, payload_david, headers)
-
+        return self._enviar_con_retry(self.cfg.url_metricas, payload_backend)
 
     def enviar_alerta(self, evento: dict) -> bool:
+        tipo_map = {
+            "ssh_failed_login":           "IP_MALICIOSA",
+            "ssh_brute_force_burst":      "BRUTE_FORCE",
+            "ssh_brute_force_persistent": "BRUTE_FORCE",
+            "wp_sensitive_route":         "ESCANEO_PUERTOS",
+            "scanner_detected":           "ESCANEO_PUERTOS",
+            "ip_flood":                   "HTTP_FLOOD",
+        }
+        severidad_map = {
+            "critical": "CRITICA",
+            "high":     "ALTA",
+            "warning":  "MEDIA",
+            "low":      "BAJA",
+            "info":     "BAJA",
+        }
 
-        # primero : se arma la cabecera ussando x internal como llave 
-        """Envía una alerta de seguridad al endpoint de David."""
-        
-        headers_alerta = {
-            "X-Internal-Key": self.internal_key,
-            "Content-Type": "application/json"
+        tipo    = evento.get("event_type", "unknown")
+        payload = evento.get("payload", {})
+
+        payload_backend = {
+            "tipo":               tipo_map.get(tipo, "IP_MALICIOSA"),
+            "severidad":          severidad_map.get(evento.get("severity", "info"), "BAJA"),
+            "ipOrigen":           evento.get("source_ip", ""),
+            "descripcionSimple":  self._descripcion_simple(tipo, payload),
+            "descripcionTecnica": f"{tipo} detectado por el monitor {evento.get('source', '')}",
+            "evidencia":          payload,
         }
-        
-        # Diccionario para traducir de tus eventos a MITRE
-        # diccionario para traducir los eventos a Mitre
-        mitre_map = {
-            "ssh_failed_login": "T1110",             
-            "ssh_brute_force_burst": "T1110.001",    
-            "ssh_brute_force_persistent": "T1110.003" 
+        return self._enviar_con_retry(self.cfg.url_alertas, payload_backend)
+
+    def _descripcion_simple(self, tipo: str, payload: dict) -> str:
+        descripciones = {
+            "ssh_brute_force_burst":
+                f"Se detectaron {payload.get('intentos', '?')} intentos de acceso SSH "
+                f"en menos de 5 minutos desde la IP {payload.get('attacker_ip', '?')}.",
+            "ssh_brute_force_persistent":
+                f"Una IP lleva {payload.get('intentos', '?')} intentos de acceso SSH "
+                f"en los ultimos 15 minutos.",
+            "wp_sensitive_route":
+                f"Alguien exploro una seccion sensible del sitio: {payload.get('ruta', '?')}.",
+            "scanner_detected":
+                f"Se detecto una herramienta de escaneo automatico desde "
+                f"la IP {payload.get('attacker_ip', '?')}.",
+            "ip_flood":
+                f"La IP {payload.get('attacker_ip', '?')} envio "
+                f"{payload.get('peticiones', '?')} peticiones en poco tiempo.",
         }
-        
-        # obtengo el nombre del evento de forma segura 
-        tipo = evento.get("event_type", "unknown")
-        tecnica = mitre_map.get(tipo, "T1000") 
-        
-        # copiamos el evento original y lo fusionamos con Mitre
-        payload_modificado = evento.copy() 
-        payload_modificado["tecnicaMitre"] = tecnica
-        
-        # si todo sale bien lo envio con exito
-        return self._enviar_con_retry(self.url_alerta, payload_modificado, headers_alerta)
+        return descripciones.get(tipo, f"Evento de seguridad detectado: {tipo}")
