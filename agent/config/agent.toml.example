@@ -1,0 +1,19 @@
+[agent]
+version = "0.1.0"
+
+[logging]
+level = "INFO"
+file = "logs/agent.log"
+
+[storage]
+db_path        = "data/lumi.db"
+max_size_mb    = 500
+retention_days = 30
+
+[sensors]
+system_interval_seconds = 5
+log_batch_size          = 100
+
+[backend]
+url_metricas = "http://back/api/v1/agent/metricas"
+url_alerta   = "http://back/api/v1/internal/alerta"

@@ -8,12 +8,17 @@ __pycache__/
 *.db
 *.sqlite
 *.sqlite3
+data/
 
 # ─── Variables de entorno ─────────────────────
 .env
 
-# ─── Logs ─────────────────────────────────────
+# ─── Logs (runtime) ──────────────────────────
+logs/
 *.log
+
+# ─── Config local (contiene URLs internas) ───
+config/agent.toml
 
 # ─── Testing ─────────────────────────────────
 .coverage
