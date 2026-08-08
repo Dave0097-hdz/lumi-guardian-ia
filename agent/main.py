@@ -18,12 +18,16 @@ from lumi_agent.monitors.system_monitor import SystemMonitor
 from lumi_agent.monitors.ssh_monitor import SSHMonitor
 from lumi_agent.monitors.https_monitors import HTTPMonitor
 from lumi_agent.senders.agent_sender import AgenteSender
+#nuevo
+from lumi_agent.core.agent_config import AgentConfig
 
 logger = logging.getLogger(__name__)
 
 CONFIG_PATH = "config/agent.toml"
 QUEUE_MAXSIZE = 1000
 MANTENIMIENTO_INTERVALO_SEG = 300
+#nuevo
+HEARTBEAT_INTERVALO_SEG = 60
 
 
 def consumidor(stop_event: threading.Event, cola: Queue,
@@ -32,6 +36,9 @@ def consumidor(stop_event: threading.Event, cola: Queue,
     logger.info("Consumidor iniciado (batch=%d)", batch_size)
     buffer = []
     ultimo_mantenimiento = time.monotonic()
+
+    ultimo_heartbeat = time.monotonic()
+
 
     while not stop_event.is_set() or not cola.empty():
         try:
@@ -57,6 +64,10 @@ def consumidor(stop_event: threading.Event, cola: Queue,
             storage.limpiar_antiguos()
             storage.limitar_por_tamano()
             ultimo_mantenimiento = ahora
+
+        if sender and (ahora - ultimo_heartbeat) >= HEARTBEAT_INTERVALO_SEG:
+            sender.enviar_heartbeat()
+            ultimo_heartbeat = ahora
 
     if buffer:
         logger.info("Vaciando %d eventos restantes antes de cerrar.", len(buffer))
@@ -95,12 +106,11 @@ def main() -> None:
 
     # AgenteSender opcional — si no hay credenciales, opera en modo local
     try:
-        sender = AgenteSender(config)
-        logger.info("AgenteSender activo — enviando datos al backend de David")
-    except Exception as e:
-        logger.warning(
-            "AgenteSender no disponible: %s — operando en modo local sin envio", e
-        )
+        agent_cfg = AgentConfig()
+        sender = AgenteSender(agent_cfg)
+        logger.info("AgenteSender activo — conectado al backend")
+    except RuntimeError as e:
+        logger.warning("%s — operando en modo local sin envio", e)
         sender = None
 
     cola = Queue(maxsize=QUEUE_MAXSIZE)

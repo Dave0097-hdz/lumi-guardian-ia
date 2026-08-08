@@ -1,6 +1,11 @@
-import tomllib
 import logging
 from pathlib import Path
+
+# Por:
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib
 
 logger = logging.getLogger(__name__)
 
