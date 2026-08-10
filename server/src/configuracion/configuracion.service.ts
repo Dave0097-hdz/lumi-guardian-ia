@@ -4,7 +4,7 @@ import { UpdateConfiguracionDto } from './dto/update-configuracion.dto';
 
 @Injectable()
 export class ConfiguracionService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async findByVps(vpsId: string, userId: string) {
     // Validar ownership: el VPS debe pertenecer al usuario
@@ -32,6 +32,17 @@ export class ConfiguracionService {
 
     if (!vps) {
       throw new NotFoundException('VPS no encontrado');
+    }
+
+    // Verificar que la Configuracion existe antes de actualizar
+    const existing = await this.prisma.configuracion.findUnique({
+      where: { vpsId },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(
+        'Configuración no encontrada para este VPS. Si el VPS fue creado antes de esta funcionalidad, contacte soporte.',
+      );
     }
 
     const configuracion = await this.prisma.configuracion.update({
