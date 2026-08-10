@@ -1,39 +1,21 @@
 import os
-import sys
 import logging
 from urllib.parse import urljoin
 
 logger = logging.getLogger(__name__)
 
-VARIABLES_REQUERIDAS = [
-    "LUMI_VPS_ID",
-    "LUMI_AGENT_TOKEN",
-    "LUMI_BACKEND_URL",
-]
-
 
 class AgentConfig:
 
     def __init__(self):
-        presentes = [v for v in VARIABLES_REQUERIDAS if os.environ.get(v)]
+        self.vps_id      = os.environ.get("LUMI_VPS_ID", "")
+        self.token       = os.environ.get("LUMI_AGENT_TOKEN", "")
+        self.backend_url = os.environ.get("LUMI_BACKEND_URL", "").rstrip("/") + "/"
 
-        if len(presentes) == 0:
+        if not self.vps_id or not self.token or not self.backend_url.strip("/"):
             raise RuntimeError(
                 "Sin credenciales de agente configuradas — operando en modo local"
             )
-
-        if len(presentes) < len(VARIABLES_REQUERIDAS):
-            faltantes = [v for v in VARIABLES_REQUERIDAS if v not in presentes]
-            logger.critical(
-                "Configuración de agente incompleta — faltan: %s. "
-                "Esto es un error de configuración, no modo local intencional.",
-                ", ".join(faltantes)
-            )
-            sys.exit(1)
-
-        self.vps_id      = os.environ["LUMI_VPS_ID"]
-        self.token       = os.environ["LUMI_AGENT_TOKEN"]
-        self.backend_url = os.environ["LUMI_BACKEND_URL"].rstrip("/") + "/"
 
         logger.info(
             "Agente identificado — VPS: %s, Backend: %s",
