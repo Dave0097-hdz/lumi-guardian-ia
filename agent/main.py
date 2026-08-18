@@ -1,6 +1,6 @@
 """
 Punto de entrada del agente de telemetria LUMI Guardian AI.
-Orquesta: config, logging, storage, monitores y consumidor.
+Orquesta: config, logging, storage, monitores, consumidor y API de control.
 Maneja apagado limpio ante señales del sistema (ISO 27001 - operacion robusta).
 """
 
@@ -18,15 +18,15 @@ from lumi_agent.monitors.system_monitor import SystemMonitor
 from lumi_agent.monitors.ssh_monitor import SSHMonitor
 from lumi_agent.monitors.https_monitors import HTTPMonitor
 from lumi_agent.senders.agent_sender import AgenteSender
-#nuevo
 from lumi_agent.core.agent_config import AgentConfig
+from lumi_agent.control.ufw_manager import UFWManager
+from lumi_agent.control.control_api import ControlAPI
 
 logger = logging.getLogger(__name__)
 
 CONFIG_PATH = "config/agent.toml"
 QUEUE_MAXSIZE = 1000
 MANTENIMIENTO_INTERVALO_SEG = 300
-#nuevo
 HEARTBEAT_INTERVALO_SEG = 60
 
 
@@ -36,9 +36,7 @@ def consumidor(stop_event: threading.Event, cola: Queue,
     logger.info("Consumidor iniciado (batch=%d)", batch_size)
     buffer = []
     ultimo_mantenimiento = time.monotonic()
-
     ultimo_heartbeat = time.monotonic()
-
 
     while not stop_event.is_set() or not cola.empty():
         try:
@@ -104,18 +102,51 @@ def main() -> None:
         logger.critical("No se pudo inicializar el storage: %s", e)
         sys.exit(1)
 
-    # AgenteSender opcional — si no hay credenciales, opera en modo local
     try:
         agent_cfg = AgentConfig()
         sender = AgenteSender(agent_cfg)
         logger.info("AgenteSender activo — conectado al backend")
     except RuntimeError as e:
         logger.warning("%s — operando en modo local sin envio", e)
+        agent_cfg = None
         sender = None
 
     cola = Queue(maxsize=QUEUE_MAXSIZE)
     stop_event = threading.Event()
     registrar_senales(stop_event)
+
+    hilo_control = None
+    control_cfg = config.get("control", {})
+
+    if sender and control_cfg.get("enabled", False):
+        bind = control_cfg.get("bind_host", "127.0.0.1")
+        if bind != "127.0.0.1":
+            logger.critical(
+                "API de control enlazada a %s (NO loopback). El canal de "
+                "ejecucion privilegiada queda accesible desde la red.", bind
+            )
+        ufw = UFWManager(
+            backend_host=agent_cfg.backend_host,
+            whitelist_extra=control_cfg.get("whitelist_ip", []),
+            permitir_privadas=control_cfg.get("permitir_privadas", False),
+        )
+        control = ControlAPI(
+            agent_config=agent_cfg,
+            ufw=ufw,
+            puerto=control_cfg.get("puerto", 9000),
+            bind_host=bind,
+        )
+        hilo_control = threading.Thread(
+            target=control.run_forever,
+            args=(stop_event,),
+            name="control-api",
+        )
+        hilo_control.start()
+    else:
+        logger.info(
+            "API de control desactivada (enabled=%s, sender=%s)",
+            control_cfg.get("enabled", False), sender is not None
+        )
 
     monitores = [
         SystemMonitor(interval_seconds=config["sensors"]["system_interval_seconds"]),
@@ -152,6 +183,9 @@ def main() -> None:
     for hilo in hilos_monitores:
         hilo.join(timeout=10)
     hilo_consumidor.join(timeout=15)
+
+    if hilo_control is not None:
+        hilo_control.join(timeout=10)
 
     storage.cerrar()
     logger.info("Agente detenido de forma limpia.")

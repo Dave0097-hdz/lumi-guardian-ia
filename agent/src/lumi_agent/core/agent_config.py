@@ -1,6 +1,6 @@
 import os
 import logging
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +11,9 @@ class AgentConfig:
         self.vps_id      = os.environ.get("LUMI_VPS_ID", "")
         self.token       = os.environ.get("LUMI_AGENT_TOKEN", "")
         self.backend_url = os.environ.get("LUMI_BACKEND_URL", "").rstrip("/") + "/"
+        # Host aislado: la whitelist de control lo necesita como dato
+        # suelto para comparar pertenencia de red.
+        self.backend_host = urlparse(self.backend_url).hostname or ""
 
         if not self.vps_id or not self.token or not self.backend_url.strip("/"):
             raise RuntimeError(

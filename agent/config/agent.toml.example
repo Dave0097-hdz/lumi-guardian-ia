@@ -14,6 +14,9 @@ retention_days = 30
 system_interval_seconds = 5
 log_batch_size          = 100
 
-[backend]
-url_metricas = "http://back/api/v1/agent/metricas"
-url_alerta   = "http://back/api/v1/internal/alerta"
+[control]
+enabled = true
+bind_host = "127.0.0.1"
+puerto = 9000
+permitir_privadas = true
+whitelist_ip = []
