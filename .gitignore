@@ -4,6 +4,9 @@
 # ─── Docs (referencia interna, no se versiona) ─
 docs/
 
+# ─── Test WebSocket temporal ──────────────────
+test-ws/
+
 # ─── Variables de entorno ──────────────────────
 .env
 .env.*

@@ -83,6 +83,7 @@ enum EstadoBloqueo {
   BLOQUEADO
   DESBLOQUEADO
   FALSO_POSITIVO
+  FALLIDO
 }
 
 enum EstadoAislamiento {

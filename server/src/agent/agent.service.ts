@@ -1,27 +1,30 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Inject, forwardRef, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { HeartbeatDto } from './dto/heartbeat.dto';
 import { CreateMetricaDto } from './dto/create-metrica.dto';
 import { CreateAlertaDto } from './dto/create-alerta.dto';
 import { VPS, AccionTomada, Prisma } from '@prisma/client';
+import { BloqueosService } from '../bloqueos/bloqueos.service';
 
 @Injectable()
 export class AgentService {
   private readonly logger = new Logger(AgentService.name);
 
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => BloqueosService))
+    private readonly bloqueosService: BloqueosService,
+  ) { }
 
   async heartbeat(vps: VPS, dto: HeartbeatDto) {
     const updateData: Record<string, unknown> = {
       ultimoHeartbeat: new Date(),
     };
 
-    // Actualizar agenteVersion si viene en el body
     if (dto.agenteVersion) {
       updateData.agenteVersion = dto.agenteVersion;
     }
 
-    // Cambiar estado a ACTIVO si estaba pendiente o desconectado
     if (vps.estado === 'PENDIENTE_INSTALACION' || vps.estado === 'DESCONECTADO') {
       updateData.estado = 'ACTIVO';
     }
@@ -65,7 +68,6 @@ export class AgentService {
     switch (configuracion?.nivelAutonomia) {
       case 'GUARDIAN_TOTAL':
         accionTomada = 'BLOQUEADO_AUTOMATICAMENTE';
-        // Fase futura: aquí se orquesta el bloqueo real vía UFW
         break;
       case 'SUGERIR':
         accionTomada = 'SUGERENCIA_ENVIADA';
@@ -94,6 +96,16 @@ export class AgentService {
     this.logger.log(
       `Alerta ${alerta.id} creada para VPS ${vps.id} — tipo: ${dto.tipo}, accion: ${accionTomada}`,
     );
+
+    // Ejecutar bloqueo automático si GUARDIAN_TOTAL y hay IP de origen
+    if (accionTomada === 'BLOQUEADO_AUTOMATICAMENTE' && dto.ipOrigen) {
+      await this.bloqueosService.ejecutarBloqueo(
+        vps.id,
+        dto.ipOrigen,
+        `Bloqueo automático — alerta ${dto.tipo} (${dto.severidad})`,
+        { alertaId: alerta.id },
+      );
+    }
 
     return {
       id: alerta.id,

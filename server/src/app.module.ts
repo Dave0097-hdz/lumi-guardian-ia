@@ -10,6 +10,8 @@ import { VpsModule } from './vps/vps.module';
 import { AgentModule } from './agent/agent.module';
 import { ConfiguracionModule } from './configuracion/configuracion.module';
 import { AlertasModule } from './alertas/alertas.module';
+import { CommonModule } from './common/common.module';
+import { BloqueosModule } from './bloqueos/bloqueos.module';
 
 @Module({
   imports: [
@@ -36,6 +38,7 @@ import { AlertasModule } from './alertas/alertas.module';
     }),
 
     // Módulos del dominio
+    CommonModule,
     PrismaModule,
     HealthModule,
     AuthModule,
@@ -43,6 +46,7 @@ import { AlertasModule } from './alertas/alertas.module';
     AgentModule,
     ConfiguracionModule,
     AlertasModule,
+    BloqueosModule,
   ],
 })
 export class AppModule { }
