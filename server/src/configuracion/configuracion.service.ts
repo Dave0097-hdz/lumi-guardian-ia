@@ -1,13 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditLogService } from '../common/services/audit-log.service';
 import { UpdateConfiguracionDto } from './dto/update-configuracion.dto';
 
 @Injectable()
 export class ConfiguracionService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLog: AuditLogService,
+  ) { }
 
   async findByVps(vpsId: string, userId: string) {
-    // Validar ownership: el VPS debe pertenecer al usuario
     const vps = await this.prisma.vPS.findFirst({
       where: { id: vpsId, userId, deletedAt: null },
       include: { configuracion: true },
@@ -25,7 +28,6 @@ export class ConfiguracionService {
   }
 
   async update(vpsId: string, userId: string, dto: UpdateConfiguracionDto) {
-    // Validar ownership
     const vps = await this.prisma.vPS.findFirst({
       where: { id: vpsId, userId, deletedAt: null },
     });
@@ -34,7 +36,6 @@ export class ConfiguracionService {
       throw new NotFoundException('VPS no encontrado');
     }
 
-    // Verificar que la Configuracion existe antes de actualizar
     const existing = await this.prisma.configuracion.findUnique({
       where: { vpsId },
     });
@@ -54,6 +55,29 @@ export class ConfiguracionService {
         ...(dto.severidadesNotif !== undefined && { severidadesNotif: dto.severidadesNotif }),
         ...(dto.umbralCpuAlerta !== undefined && { umbralCpuAlerta: dto.umbralCpuAlerta }),
         ...(dto.umbralRamAlerta !== undefined && { umbralRamAlerta: dto.umbralRamAlerta }),
+      },
+    });
+
+    // Auditar cambio de configuración (especialmente nivelAutonomia)
+    await this.auditLog.registrar({
+      vpsId,
+      userId,
+      entidad: 'Configuracion',
+      entidadId: configuracion.id,
+      accion: 'configuracion_actualizada',
+      datosAntes: {
+        nivelAutonomia: existing.nivelAutonomia,
+        umbralCpuAlerta: existing.umbralCpuAlerta,
+        umbralRamAlerta: existing.umbralRamAlerta,
+        notifEmail: existing.notifEmail,
+        notifDashboard: existing.notifDashboard,
+      },
+      datosDespues: {
+        nivelAutonomia: configuracion.nivelAutonomia,
+        umbralCpuAlerta: configuracion.umbralCpuAlerta,
+        umbralRamAlerta: configuracion.umbralRamAlerta,
+        notifEmail: configuracion.notifEmail,
+        notifDashboard: configuracion.notifDashboard,
       },
     });
 

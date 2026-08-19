@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditLogService } from '../common/services/audit-log.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import * as bcrypt from 'bcryptjs';
@@ -20,6 +21,7 @@ export class AuthService {
         private readonly prisma: PrismaService,
         private readonly config: ConfigService,
         private readonly jwtService: JwtService,
+        private readonly auditLog: AuditLogService,
     ) { }
 
     async register(dto: RegisterDto) {
@@ -107,6 +109,18 @@ export class AuthService {
             await this.prisma.refreshToken.updateMany({
                 where: { userId: storedToken.userId, revokedAt: null },
                 data: { revokedAt: new Date() },
+            });
+
+            // Registrar evento de seguridad en AuditLog (sobrevive a reinicios del contenedor)
+            await this.auditLog.registrar({
+                userId: storedToken.userId,
+                entidad: 'RefreshToken',
+                entidadId: storedToken.id,
+                accion: 'refresh_token_reuso_detectado',
+                datosDespues: {
+                    mensaje: 'Todas las sesiones del usuario revocadas por detección de reuso',
+                    tokenReutilizadoId: storedToken.id,
+                },
             });
 
             throw new UnauthorizedException(

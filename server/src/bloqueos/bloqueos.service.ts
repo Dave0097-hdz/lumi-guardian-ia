@@ -36,6 +36,16 @@ export class BloqueosService {
     motivo: string,
     opciones: { userId?: string; alertaId?: string },
   ) {
+    // 0. Validar ownership si es bloqueo manual (con userId)
+    if (opciones.userId) {
+      const vps = await this.prisma.vPS.findFirst({
+        where: { id: vpsId, userId: opciones.userId, deletedAt: null },
+      });
+      if (!vps) {
+        throw new NotFoundException('VPS no encontrado');
+      }
+    }
+
     // 1. Whitelist — global (vpsId null) o específica de este VPS
     const enWhitelist = await this.prisma.whitelistIP.findFirst({
       where: {

@@ -6,7 +6,7 @@ import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class AlertasService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async findAll(userId: string, query: QueryAlertasDto) {
     const page = query.page ?? 1;
@@ -22,11 +22,11 @@ export class AlertasService {
       ...(query.estado && { estado: query.estado }),
       ...(query.desde || query.hasta
         ? {
-            detectadoEn: {
-              ...(query.desde && { gte: new Date(query.desde) }),
-              ...(query.hasta && { lte: new Date(query.hasta) }),
-            },
-          }
+          detectadoEn: {
+            ...(query.desde && { gte: new Date(query.desde) }),
+            ...(query.hasta && { lte: new Date(query.hasta) }),
+          },
+        }
         : {}),
     };
 
@@ -97,7 +97,7 @@ export class AlertasService {
       where: { id: alertaId },
       data: {
         estado: dto.estado,
-        revisadoEn: dto.estado !== 'DETECTADA' ? new Date() : null,
+        revisadoEn: new Date(),
       },
     });
 

@@ -20,18 +20,13 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { BloqueosService } from './bloqueos.service';
 import { CreateBloqueoDto } from './dto/create-bloqueo.dto';
 import { QueryBloqueosDto } from './dto/query-bloqueos.dto';
-import { PrismaService } from '../prisma/prisma.service';
-import { NotFoundException } from '@nestjs/common';
 
 @ApiTags('bloqueos')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('bloqueos')
 export class BloqueosController {
-  constructor(
-    private readonly bloqueosService: BloqueosService,
-    private readonly prisma: PrismaService,
-  ) {}
+  constructor(private readonly bloqueosService: BloqueosService) { }
 
   @Post()
   @ApiOperation({ summary: 'Bloquear IP manualmente desde el dashboard' })
@@ -41,14 +36,6 @@ export class BloqueosController {
     @CurrentUser() user: { userId: string },
     @Body() dto: CreateBloqueoDto,
   ) {
-    // Validar ownership del VPS
-    const vps = await this.prisma.vPS.findFirst({
-      where: { id: dto.vpsId, userId: user.userId, deletedAt: null },
-    });
-    if (!vps) {
-      throw new NotFoundException('VPS no encontrado');
-    }
-
     return this.bloqueosService.ejecutarBloqueo(
       dto.vpsId,
       dto.ip,

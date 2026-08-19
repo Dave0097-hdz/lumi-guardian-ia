@@ -1,13 +1,12 @@
-import { IsEnum } from 'class-validator';
+import { IsIn } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { EstadoAlerta } from '@prisma/client';
 
 export class UpdateEstadoAlertaDto {
   @ApiProperty({
     enum: ['REVISADA', 'FALSO_POSITIVO', 'RESUELTA'],
-    description: 'Nuevo estado de la alerta',
+    description: 'Nuevo estado de la alerta (no se puede volver a DETECTADA manualmente)',
     example: 'REVISADA',
   })
-  @IsEnum(EstadoAlerta)
-  estado!: EstadoAlerta;
+  @IsIn(['REVISADA', 'FALSO_POSITIVO', 'RESUELTA'])
+  estado!: 'REVISADA' | 'FALSO_POSITIVO' | 'RESUELTA';
 }
