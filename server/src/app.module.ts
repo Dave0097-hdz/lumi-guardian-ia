@@ -13,6 +13,8 @@ import { AlertasModule } from './alertas/alertas.module';
 import { CommonModule } from './common/common.module';
 import { BloqueosModule } from './bloqueos/bloqueos.module';
 import { WhitelistModule } from './whitelist/whitelist.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { CronModule } from './cron/cron.module';
 
 @Module({
   imports: [
@@ -49,6 +51,8 @@ import { WhitelistModule } from './whitelist/whitelist.module';
     AlertasModule,
     BloqueosModule,
     WhitelistModule,
+    ScheduleModule.forRoot(),
+    CronModule,
   ],
 })
 export class AppModule { }
