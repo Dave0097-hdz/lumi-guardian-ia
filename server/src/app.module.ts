@@ -12,6 +12,7 @@ import { ConfiguracionModule } from './configuracion/configuracion.module';
 import { AlertasModule } from './alertas/alertas.module';
 import { CommonModule } from './common/common.module';
 import { BloqueosModule } from './bloqueos/bloqueos.module';
+import { WhitelistModule } from './whitelist/whitelist.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { BloqueosModule } from './bloqueos/bloqueos.module';
     ConfiguracionModule,
     AlertasModule,
     BloqueosModule,
+    WhitelistModule,
   ],
 })
 export class AppModule { }

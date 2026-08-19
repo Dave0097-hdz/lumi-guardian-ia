@@ -5,6 +5,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   ParseUUIDPipe,
 } from '@nestjs/common';
@@ -18,13 +19,14 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { VpsService } from './vps.service';
 import { CreateVpsDto } from './dto/create-vps.dto';
+import { QueryMetricasDto } from './dto/query-metricas.dto';
 
 @ApiTags('vps')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('vps')
 export class VpsController {
-  constructor(private readonly vpsService: VpsService) {}
+  constructor(private readonly vpsService: VpsService) { }
 
   @Post()
   @ApiOperation({
@@ -79,5 +81,17 @@ export class VpsController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     return this.vpsService.regenerateToken(id, user.userId);
+  }
+
+  @Get(':id/metricas')
+  @ApiOperation({ summary: 'Métricas históricas del VPS con resumen' })
+  @ApiResponse({ status: 200, description: 'Datos y resumen del período' })
+  @ApiResponse({ status: 404, description: 'VPS no encontrado' })
+  async getMetricas(
+    @CurrentUser() user: { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: QueryMetricasDto,
+  ) {
+    return this.vpsService.getMetricas(id, user.userId, query.periodo);
   }
 }

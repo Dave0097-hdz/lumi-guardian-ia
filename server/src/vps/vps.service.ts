@@ -140,7 +140,63 @@ export class VpsService {
     };
   }
 
+  async getMetricas(vpsId: string, userId: string, periodo: '1h' | '24h' | '7d' | '30d' = '24h') {
+    const vps = await this.prisma.vPS.findFirst({
+      where: { id: vpsId, userId, deletedAt: null },
+    });
+
+    if (!vps) {
+      throw new NotFoundException('VPS no encontrado');
+    }
+
+    const desde = this.calcularDesde(periodo);
+
+    // Obtener métricas (máx 1000, más recientes primero para aplicar el límite)
+    const datos = await this.prisma.metrica.findMany({
+      where: { vpsId, registradoEn: { gte: desde } },
+      orderBy: { registradoEn: 'desc' },
+      take: 1000,
+    });
+    datos.reverse(); // Entregar ascendente (más antiguo primero, para graficar)
+
+    // Resumen en paralelo
+    const [totalAlertas, ipsBloqueadas, agregadosCpu] = await Promise.all([
+      this.prisma.alerta.count({
+        where: { vpsId, detectadoEn: { gte: desde } },
+      }),
+      this.prisma.bloqueo.count({
+        where: { vpsId, estado: 'BLOQUEADO' },
+      }),
+      this.prisma.metrica.aggregate({
+        where: { vpsId, registradoEn: { gte: desde } },
+        _avg: { cpuPorcentaje: true },
+      }),
+    ]);
+
+    const ramPromedio = datos.length
+      ? datos.reduce((acc, m) => acc + (m.ramUsadaMB / m.ramTotalMB) * 100, 0) / datos.length
+      : 0;
+
+    return {
+      vpsId,
+      periodo,
+      datos,
+      resumen: {
+        totalAlertas,
+        ipsBloqueadas,
+        cpuPromedio: agregadosCpu._avg.cpuPorcentaje ?? 0,
+        ramPromedio: Math.round(ramPromedio * 10) / 10,
+      },
+    };
+  }
+
   // ─── PRIVADOS ────────────────────────────────
+
+  private calcularDesde(periodo: '1h' | '24h' | '7d' | '30d'): Date {
+    const ahora = new Date();
+    const horas: Record<string, number> = { '1h': 1, '24h': 24, '7d': 24 * 7, '30d': 24 * 30 };
+    return new Date(ahora.getTime() - horas[periodo] * 60 * 60 * 1000);
+  }
 
   private generateInstallScript(vpsId: string, agentToken: string): string {
     const publicUrl = this.config.get<string>('app.publicUrl');
