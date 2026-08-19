@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditLogService } from '../common/services/audit-log.service';
 import { CreateVpsDto } from './dto/create-vps.dto';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
@@ -18,6 +19,7 @@ export class VpsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly auditLog: AuditLogService,
   ) { }
 
   async create(userId: string, dto: CreateVpsDto) {
@@ -108,6 +110,16 @@ export class VpsService {
       },
     });
 
+    await this.auditLog.registrar({
+      vpsId,
+      userId,
+      entidad: 'VPS',
+      entidadId: vpsId,
+      accion: 'vps_eliminado',
+      datosAntes: { nombre: vps.nombre, ip: vps.ip, estado: vps.estado },
+      datosDespues: { estado: 'ELIMINADO' },
+    });
+
     return { message: 'VPS eliminado correctamente' };
   }
 
@@ -120,7 +132,6 @@ export class VpsService {
       throw new NotFoundException('VPS no encontrado');
     }
 
-    // Generar nuevo token
     const agentTokenPlain = crypto.randomBytes(32).toString('hex');
     const saltRounds = this.config.get<number>('bcrypt.saltRounds') ?? 12;
     const agentTokenHash = await bcrypt.hash(agentTokenPlain, saltRounds);
@@ -131,6 +142,14 @@ export class VpsService {
     });
 
     const installScript = this.generateInstallScript(vpsId, agentTokenPlain);
+
+    await this.auditLog.registrar({
+      vpsId,
+      userId,
+      entidad: 'VPS',
+      entidadId: vpsId,
+      accion: 'agent_token_regenerado',
+    });
 
     this.logger.log(`Token regenerado para VPS ${vpsId}`);
 

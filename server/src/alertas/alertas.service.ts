@@ -1,12 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditLogService } from '../common/services/audit-log.service';
 import { QueryAlertasDto } from './dto/query-alertas.dto';
 import { UpdateEstadoAlertaDto } from './dto/update-estado-alerta.dto';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class AlertasService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLog: AuditLogService,
+  ) { }
 
   async findAll(userId: string, query: QueryAlertasDto) {
     const page = query.page ?? 1;
@@ -99,6 +103,15 @@ export class AlertasService {
         estado: dto.estado,
         revisadoEn: new Date(),
       },
+    });
+
+    await this.auditLog.registrar({
+      vpsId: alerta.vpsId,
+      entidad: 'Alerta',
+      entidadId: alertaId,
+      accion: 'alerta_estado_actualizado',
+      datosAntes: { estado: alerta.estado },
+      datosDespues: { estado: dto.estado },
     });
 
     return updated;
