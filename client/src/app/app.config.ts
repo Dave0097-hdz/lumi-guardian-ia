@@ -8,6 +8,7 @@ import { environment } from '../environments/environment';
 client.setConfig({
   baseUrl: environment.apiUrl,
   credentials: 'include',  // Envía cookies HttpOnly automáticamente en cada request
+  cache: 'no-store',       // Evita que el navegador cachee respuestas de la API
 });
 
 // Interceptor: adjunta Bearer token a cada request
