@@ -2,11 +2,12 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { ToastComponent } from '../../shared/components/toast/toast.component';
 
 @Component({
   standalone: true,
   selector: 'app-shell',
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, ToastComponent],
   template: `
     <!-- Topbar -->
     <header class="topbar">
@@ -94,6 +95,9 @@ import { AuthService } from '../../core/services/auth.service';
         <router-outlet></router-outlet>
       </main>
     </div>
+
+    <!-- Notificaciones flotantes -->
+    <app-toast></app-toast>
   `,
   styles: [`
     :host {
