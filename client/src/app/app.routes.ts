@@ -28,6 +28,16 @@ export const routes: Routes = [
                 loadComponent: () =>
                     import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
             },
+            {
+                path: 'vps',
+                loadComponent: () =>
+                    import('./features/vps/vps-list/vps-list.component').then((m) => m.VpsListComponent),
+            },
+            {
+                path: 'vps/:id',
+                loadComponent: () =>
+                    import('./features/vps/vps-detail/vps-detail.component').then((m) => m.VpsDetailComponent),
+            },
         ],
     },
 ];
