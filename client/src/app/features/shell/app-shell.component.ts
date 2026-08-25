@@ -50,7 +50,7 @@ import { ToastComponent } from '../../shared/components/toast/toast.component';
             </svg>
             <span>Mis VPS</span>
           </a>
-          <a class="nav-item disabled">
+          <a routerLink="/dashboard/alertas" routerLinkActive="active" class="nav-item">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <circle cx="12" cy="12" r="10"/>
               <polyline points="12,6 12,12 16,14"/>

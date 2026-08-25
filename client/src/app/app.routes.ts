@@ -38,6 +38,11 @@ export const routes: Routes = [
                 loadComponent: () =>
                     import('./features/vps/vps-detail/vps-detail.component').then((m) => m.VpsDetailComponent),
             },
+            {
+                path: 'alertas',
+                loadComponent: () =>
+                    import('./features/alertas/alertas-historial/alertas-historial.component').then((m) => m.AlertasHistorialComponent),
+            },
         ],
     },
 ];
