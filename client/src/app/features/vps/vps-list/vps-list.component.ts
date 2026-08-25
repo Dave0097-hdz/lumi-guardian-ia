@@ -2,6 +2,7 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { VpsService, VpsData } from '../../../core/services/vps.service';
+import { CreateVpsModalComponent } from '../create-vps-modal/create-vps-modal.component';
 
 const ESTADO_STYLES: Record<string, { bg: string; color: string; label: string }> = {
   ACTIVO: { bg: 'rgba(34, 197, 94, 0.15)', color: 'var(--color-success)', label: 'Activo' },
@@ -14,7 +15,7 @@ const ESTADO_STYLES: Record<string, { bg: string; color: string; label: string }
 @Component({
   standalone: true,
   selector: 'app-vps-list',
-  imports: [CommonModule],
+  imports: [CommonModule, CreateVpsModalComponent],
   template: `
     <div class="vps-header">
       <h1>Mis Servidores</h1>
@@ -60,14 +61,11 @@ const ESTADO_STYLES: Record<string, { bg: string; color: string; label: string }
       </div>
     </div>
 
-    <!-- Modal de creación (placeholder — se implementa en Tarea 3) -->
-    <div class="modal-backdrop" *ngIf="showModal()" (click)="showModal.set(false)">
-      <div class="modal" (click)="$event.stopPropagation()">
-        <h2>Nuevo servidor</h2>
-        <p class="modal-subtitle">Se implementará en el siguiente commit.</p>
-        <button class="btn-outline" (click)="showModal.set(false)">Cerrar</button>
-      </div>
-    </div>
+    <!-- Modal de creación -->
+    <app-create-vps-modal
+      *ngIf="showModal()"
+      (closed)="onModalClosed($event)"
+    ></app-create-vps-modal>
   `,
   styles: [`
     .vps-header { margin-bottom: 24px; }
@@ -204,36 +202,6 @@ const ESTADO_STYLES: Record<string, { bg: string; color: string; label: string }
       font-size: 0.8rem;
       color: var(--color-text-muted);
     }
-
-    /* Modal placeholder */
-    .modal-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.6);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-
-    .modal {
-      background: var(--color-surface);
-      border: 1px solid var(--color-input-border);
-      border-radius: 16px;
-      padding: 32px;
-      min-width: 400px;
-    }
-
-    .modal h2 {
-      font-size: 1.3rem;
-      margin-bottom: 12px;
-    }
-
-    .modal-subtitle {
-      color: var(--color-text-secondary);
-      font-size: 0.9rem;
-      margin-bottom: 20px;
-    }
   `],
 })
 export class VpsListComponent implements OnInit {
@@ -244,7 +212,7 @@ export class VpsListComponent implements OnInit {
   constructor(
     private readonly vpsService: VpsService,
     private readonly router: Router,
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.loadVps();
@@ -256,6 +224,13 @@ export class VpsListComponent implements OnInit {
 
   goToDetail(id: string): void {
     this.router.navigate(['/dashboard/vps', id]);
+  }
+
+  onModalClosed(created: boolean): void {
+    this.showModal.set(false);
+    if (created) {
+      this.loadVps(); // Refresca la lista si se creó un VPS
+    }
   }
 
   private async loadVps(): Promise<void> {
