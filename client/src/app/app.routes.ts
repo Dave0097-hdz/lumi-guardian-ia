@@ -43,6 +43,11 @@ export const routes: Routes = [
                 loadComponent: () =>
                     import('./features/alertas/alertas-historial/alertas-historial.component').then((m) => m.AlertasHistorialComponent),
             },
+            {
+                path: 'bloqueos',
+                loadComponent: () =>
+                    import('./features/bloqueos/bloqueos-historial/bloqueos-historial.component').then((m) => m.BloqueosHistorialComponent),
+            },
         ],
     },
 ];
