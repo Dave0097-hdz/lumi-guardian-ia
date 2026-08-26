@@ -45,6 +45,7 @@ export interface UpdateConfigDto {
   nivelAutonomia?: string;
   notifEmail?: boolean;
   notifDashboard?: boolean;
+  severidadesNotif?: string[];
   umbralCpuAlerta?: number;
   umbralRamAlerta?: number;
 }

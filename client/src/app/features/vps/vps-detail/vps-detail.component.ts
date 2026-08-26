@@ -133,6 +133,28 @@ import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/
           </label>
         </div>
 
+        @if (notifEmail()) {
+          <div class="severidades-row">
+            <div class="severidades-info">
+              <strong>¿Para qué severidades?</strong>
+              <p>Solo recibirás correo de las severidades seleccionadas</p>
+            </div>
+            <div class="chips">
+              @for (sev of severidadesDisponibles; track sev.value) {
+                <button
+                  type="button"
+                  class="chip"
+                  [class.active]="severidadesNotif().includes(sev.value)"
+                  [style.--chip-color]="sev.color"
+                  (click)="toggleSeveridad(sev.value)"
+                >
+                  {{ sev.label }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+
         <div class="toggle-row">
           <div class="toggle-info">
             <strong>Notificarme en el dashboard</strong>
@@ -401,6 +423,58 @@ import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/
       margin-top: 2px;
     }
 
+    /* Chips de severidad */
+    .severidades-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 0 12px 20px;
+      border-bottom: 1px solid var(--color-input-border);
+    }
+
+    .severidades-info strong {
+      font-size: 0.85rem;
+      color: var(--color-text-primary);
+      display: block;
+    }
+
+    .severidades-info p {
+      font-size: 0.78rem;
+      color: var(--color-text-muted);
+      margin-top: 2px;
+    }
+
+    .chips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .chip {
+      padding: 5px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--color-input-border);
+      background: transparent;
+      color: var(--color-text-muted);
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .chip:hover {
+      border-color: var(--chip-color);
+      color: var(--color-text-primary);
+    }
+
+    .chip.active {
+      border-color: var(--chip-color);
+      background: color-mix(in srgb, var(--chip-color) 18%, transparent);
+      color: var(--chip-color);
+    }
+
     .toggle {
       position: relative;
       width: 44px;
@@ -592,6 +666,14 @@ export class VpsDetailComponent implements OnInit {
   umbralRam = signal(90);
   notifEmail = signal(true);
   notifDashboard = signal(true);
+  severidadesNotif = signal<string[]>([]);
+
+  readonly severidadesDisponibles: { value: string; label: string; color: string }[] = [
+    { value: 'BAJA', label: 'Baja', color: 'var(--color-severidad-baja, #64748b)' },
+    { value: 'MEDIA', label: 'Media', color: 'var(--color-severidad-media, #f59e0b)' },
+    { value: 'ALTA', label: 'Alta', color: 'var(--color-severidad-alta, #f97316)' },
+    { value: 'CRITICA', label: 'Crítica', color: 'var(--color-error, #ef4444)' },
+  ];
 
   private vpsId = '';
 
@@ -607,6 +689,14 @@ export class VpsDetailComponent implements OnInit {
     this.loadData();
   }
 
+  toggleSeveridad(sev: string): void {
+    this.severidadesNotif.update((actuales) =>
+      actuales.includes(sev)
+        ? actuales.filter((s) => s !== sev)
+        : [...actuales, sev],
+    );
+  }
+
   async guardarCambios(): Promise<void> {
     this.isSaving.set(true);
     this.errorMsg.set('');
@@ -618,6 +708,7 @@ export class VpsDetailComponent implements OnInit {
         umbralRamAlerta: this.umbralRam(),
         notifEmail: this.notifEmail(),
         notifDashboard: this.notifDashboard(),
+        severidadesNotif: this.severidadesNotif(),
       });
       this.toast.show('Cambios guardados correctamente', 'success');
     } catch {
@@ -686,6 +777,7 @@ export class VpsDetailComponent implements OnInit {
       this.umbralRam.set(config.umbralRamAlerta);
       this.notifEmail.set(config.notifEmail);
       this.notifDashboard.set(config.notifDashboard);
+      this.severidadesNotif.set(config.severidadesNotif ?? []);
     } catch {
       this.errorMsg.set('Error al cargar la configuración');
     } finally {

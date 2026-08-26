@@ -3,8 +3,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { HeartbeatDto } from './dto/heartbeat.dto';
 import { CreateMetricaDto } from './dto/create-metrica.dto';
 import { CreateAlertaDto } from './dto/create-alerta.dto';
-import { VPS, AccionTomada, Prisma } from '@prisma/client';
+import { VPS, AccionTomada, SeveridadAlerta, Prisma } from '@prisma/client';
 import { BloqueosService } from '../bloqueos/bloqueos.service';
+import { DashboardGateway } from '../dashboard-gateway/dashboard.gateway';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class AgentService {
@@ -14,6 +16,8 @@ export class AgentService {
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => BloqueosService))
     private readonly bloqueosService: BloqueosService,
+    private readonly dashboardGateway: DashboardGateway,
+    private readonly mailService: MailService,
   ) { }
 
   async heartbeat(vps: VPS, dto: HeartbeatDto) {
@@ -91,11 +95,36 @@ export class AgentService {
         evidencia: dto.evidencia as Prisma.InputJsonValue,
         accionTomada,
       },
+      // Mismo shape que un elemento de GET /alertas — es lo que consume el dashboard.
+      select: {
+        id: true,
+        vpsId: true,
+        tipo: true,
+        severidad: true,
+        ipOrigen: true,
+        tecnicaMitre: true,
+        paisOrigen: true,
+        descripcionSimple: true,
+        accionTomada: true,
+        estado: true,
+        detectadoEn: true,
+        revisadoEn: true,
+      },
     });
 
     this.logger.log(
       `Alerta ${alerta.id} creada para VPS ${vps.id} — tipo: ${dto.tipo}, accion: ${accionTomada}`,
     );
+
+    // Notificación en vivo al dashboard del dueño del VPS (fase A: nueva-alerta).
+    // Se emite siempre; si el dashboard está cerrado, el gateway simplemente no hace
+    // nada (el historial vía GET /alertas sigue siendo la fuente de verdad).
+    this.dashboardGateway.emitirAUsuario(vps.userId, 'nueva-alerta', alerta);
+
+    // Notificación por email — solo si el usuario la activó y la severidad de esta
+    // alerta está entre las que quiere recibir. Fire-and-forget: un fallo de email
+    // no debe afectar la respuesta al agente.
+    void this.notificarPorEmail(vps, configuracion, dto);
 
     // Ejecutar bloqueo automático si GUARDIAN_TOTAL y hay IP de origen
     if (accionTomada === 'BLOQUEADO_AUTOMATICAMENTE' && dto.ipOrigen) {
@@ -112,5 +141,33 @@ export class AgentService {
       detectadoEn: alerta.detectadoEn,
       accionTomada: alerta.accionTomada,
     };
+  }
+
+  /**
+   * Envía el email de alerta si el usuario tiene notifEmail activo y la severidad
+   * está entre las que quiere recibir (severidadesNotif). Reutiliza la configuración
+   * ya consultada; solo hace una query extra del User cuando realmente va a enviar.
+   */
+  private async notificarPorEmail(
+    vps: VPS,
+    configuracion: { notifEmail: boolean; severidadesNotif: SeveridadAlerta[] } | null,
+    dto: CreateAlertaDto,
+  ): Promise<void> {
+    if (!configuracion?.notifEmail) return;
+    if (!configuracion.severidadesNotif.includes(dto.severidad)) return;
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: vps.userId },
+      select: { email: true, nombre: true },
+    });
+    if (!user) return;
+
+    await this.mailService.enviarAlertaVps(user.email, user.nombre, {
+      tipo: dto.tipo,
+      severidad: dto.severidad,
+      ipOrigen: dto.ipOrigen ?? null,
+      descripcionSimple: dto.descripcionSimple,
+      vpsNombre: vps.nombre,
+    });
   }
 }

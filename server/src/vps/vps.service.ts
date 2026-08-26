@@ -52,9 +52,15 @@ export class VpsService {
         },
       });
 
-      // Crear Configuracion default (1:1 con VPS) en la misma transacción
+      // Crear Configuracion default (1:1 con VPS) en la misma transacción.
+      // severidadesNotif arranca con ALTA + CRITICA para que el toggle notifEmail
+      // (activo por defecto) envíe correos desde el alta sin requerir configuración
+      // manual — sin llenar la bandeja con alertas triviales (BAJA/MEDIA).
       await tx.configuracion.create({
-        data: { vpsId: newVps.id },
+        data: {
+          vpsId: newVps.id,
+          severidadesNotif: ['ALTA', 'CRITICA'],
+        },
       });
 
       return newVps;
