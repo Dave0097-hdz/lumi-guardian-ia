@@ -53,6 +53,11 @@ export const routes: Routes = [
                 loadComponent: () =>
                     import('./features/whitelist/whitelist.component').then((m) => m.WhitelistComponent),
             },
+            {
+                path: 'configuracion',
+                loadComponent: () =>
+                    import('./features/configuracion/configuracion.component').then((m) => m.ConfiguracionComponent),
+            },
         ],
     },
 ];
