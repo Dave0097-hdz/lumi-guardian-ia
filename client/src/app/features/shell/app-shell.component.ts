@@ -22,7 +22,7 @@ import { ToastComponent } from '../../shared/components/toast/toast.component';
         </div>
       </div>
       <div class="topbar-right">
-        <span class="topbar-link">Nosotros</span>
+        <span class="topbar-link" routerLink="/dashboard/nosotros">Nosotros</span>
         <div class="user-info">
           <div class="user-avatar">{{ userInitial }}</div>
           <span class="user-name">{{ userName }}</span>

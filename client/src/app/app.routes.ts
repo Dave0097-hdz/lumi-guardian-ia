@@ -58,6 +58,11 @@ export const routes: Routes = [
                 loadComponent: () =>
                     import('./features/configuracion/configuracion.component').then((m) => m.ConfiguracionComponent),
             },
+            {
+                path: 'nosotros',
+                loadComponent: () =>
+                    import('./features/nosotros/nosotros.component').then((m) => m.NosotrosComponent),
+            },
         ],
     },
 ];
