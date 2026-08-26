@@ -48,6 +48,11 @@ export const routes: Routes = [
                 loadComponent: () =>
                     import('./features/bloqueos/bloqueos-historial/bloqueos-historial.component').then((m) => m.BloqueosHistorialComponent),
             },
+            {
+                path: 'whitelist',
+                loadComponent: () =>
+                    import('./features/whitelist/whitelist.component').then((m) => m.WhitelistComponent),
+            },
         ],
     },
 ];
