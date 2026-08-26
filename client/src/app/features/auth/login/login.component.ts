@@ -70,6 +70,10 @@ import { AuthService } from '../../../core/services/auth.service';
         ¿No tienes cuenta? <a routerLink="/register">Regístrate</a>
       </p>
 
+      <p class="auth-link forgot-link">
+        <a routerLink="/forgot-password">¿Olvidaste tu contraseña?</a>
+      </p>
+
       <!-- Contenido derecho: decorativo -->
       <div rightContent class="right-decorative">
         <!-- Mascota -->
@@ -147,6 +151,11 @@ import { AuthService } from '../../../core/services/auth.service';
       margin-top: 24px;
       color: var(--color-text-muted);
       font-size: 0.9rem;
+    }
+
+    .forgot-link {
+      margin-top: 8px;
+      font-size: 0.82rem;
     }
 
     /* Columna derecha */
