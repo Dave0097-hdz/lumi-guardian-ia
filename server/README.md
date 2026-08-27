@@ -99,7 +99,8 @@ Se cargan desde el `.env` de la raíz del monorepo. Las principales:
 | `JWT_SECRET` | Secreto para firmar los JWT |
 | `JWT_EXPIRES_IN` | Duración del accessToken (por defecto 15m) |
 | `PORT` | Puerto del backend (por defecto 3000) |
-| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` | Configuración del servidor de correo |
+| `LUMI_PUBLIC_URL` | URL pública del sistema (se inyecta en el `install.sh` del agente) |
+| `EMAIL_HOST` / `EMAIL_PORT` / `EMAIL_USER` / `EMAIL_PASSWORD` / `EMAIL_SECURE` | Configuración del servidor de correo |
 | `SMTP_FROM_NAME` / `SMTP_FROM_EMAIL` | Remitente de los correos |
 
 Nunca se versionan secretos reales: el `.env.example` documenta las claves sin valores sensibles.

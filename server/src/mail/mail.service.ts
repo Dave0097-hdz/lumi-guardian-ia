@@ -129,9 +129,18 @@ export class MailService {
     }
   }
 
+  /**
+   * Directorio de plantillas relativo a ESTE archivo, no a process.cwd().
+   * Nest copia mail/templates a dist/mail/templates (nest-cli.json assets), y
+   * este service compila a dist/mail/mail.service.js — así __dirname/templates
+   * resuelve tanto en desarrollo como en producción (node dist/main.js), sin
+   * depender del directorio desde el que se lance el proceso.
+   */
+  private readonly templatesDir = path.join(__dirname, 'templates');
+
   private cargarTemplate(nombre: string, variables: Record<string, unknown>): string {
     try {
-      const templatePath = path.join(process.cwd(), 'src', 'mail', 'templates', `${nombre}.hbs`);
+      const templatePath = path.join(this.templatesDir, `${nombre}.hbs`);
       const source = fs.readFileSync(templatePath, 'utf-8');
       const template = handlebars.compile(source);
       return template(variables);
@@ -143,7 +152,7 @@ export class MailService {
 
   private cargarTextoPlano(nombre: string, variables: Record<string, unknown>): string {
     try {
-      const templatePath = path.join(process.cwd(), 'src', 'mail', 'templates', `${nombre}.txt.hbs`);
+      const templatePath = path.join(this.templatesDir, `${nombre}.txt.hbs`);
       const source = fs.readFileSync(templatePath, 'utf-8');
       const template = handlebars.compile(source);
       return template(variables);
