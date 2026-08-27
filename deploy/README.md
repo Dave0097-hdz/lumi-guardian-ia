@@ -56,8 +56,11 @@ cp .env.production.example .env.production
 
 ### 3. Construir y levantar
 
+> Importante: `.env.production` no se carga automáticamente como archivo de
+> interpolación de Compose. Desde esta carpeta, usa siempre `--env-file`:
+
 ```bash
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
 ```
 
 Esto, en orden:
@@ -69,12 +72,19 @@ Esto, en orden:
 ### 4. Verificar
 
 ```bash
-docker compose -f docker-compose.prod.yml ps        # todos "running"/"healthy"
-curl http://localhost/api/v1                         # responde el backend
-curl http://localhost/                               # responde el index de Angular
+docker compose --env-file .env.production -f docker-compose.prod.yml ps
+curl http://localhost/api/v1/health                   # healthcheck del backend
+curl http://localhost/                                # index de Angular
 ```
 
 La app queda en `http://<IP-o-dominio>/`.
+
+Para una prueba local en Windows, si el puerto 80 está ocupado, configura
+`NGINX_HTTP_PORT=8080` en `.env.production` y usa:
+
+```bash
+curl http://localhost:8080/api/v1/health
+```
 
 ### 5. HTTPS (recomendado antes de exponer)
 
@@ -103,8 +113,22 @@ server {
 
 ```bash
 git pull
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
 ```
+
+### Redeploy y persistencia de datos
+
+Un redeploy no crea una instalación de base de datos desde cero. El volumen
+`lumi-pgdata` conserva PostgreSQL, incluyendo usuarios, VPS, alertas y demás
+datos. El servicio `migrate` aplica únicamente migraciones pendientes y
+termina con código 0; que el contenedor `migrate` aparezca como `Exited (0)` es
+esperado.
+
+No uses `docker compose down -v` salvo que quieras borrar la base de datos
+local completa. Un `git pull` seguido de `up -d --build` conserva los datos y
+no requiere crear usuarios nuevamente. Solo necesitarías crear usuarios otra
+vez si eliminas el volumen, cambias de servidor/base de datos o despliegas
+con una base vacía.
 
 ---
 
@@ -170,6 +194,6 @@ docker push <account>.dkr.ecr.<region>.amazonaws.com/lumi-backend:latest
 
 ## Notas
 
-- **Angular incorpora la URL en build-time.** Usamos `apiUrl: ''` (rutas relativas) + `fileReplacements` en `angular.json`, así el frontend siempre llama a su propio origen y Nginx reparte. No hay que reconstruir la imagen por cambiar de dominio.
+- **Angular incorpora la URL en build-time.** En producción usamos `apiUrl: ''` (rutas relativas) + `fileReplacements` en `angular.json`, así el frontend llama a su propio origen y Nginx reparte. Con esta configuración el dominio no se codifica en el bundle, pero hay que reconstruir la imagen si cambias código o configuración del frontend.
 - **El agente Python no se despliega aquí.** Se instala en cada VPS cliente vía su `install.sh` + `systemd`. El proxy de `/socket.io/` ya queda listo para cuando el agente implemente su cliente Socket.IO.
 - **Swagger** queda en `/api/docs` (el prefijo global `/api/v1` no afecta a la ruta de Swagger porque se registra por separado). Conviene restringir su acceso en producción.

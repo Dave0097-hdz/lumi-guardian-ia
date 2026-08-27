@@ -5,6 +5,8 @@ FROM node:20-alpine AS deps
 
 WORKDIR /app
 
+RUN apk add --no-cache openssl
+
 RUN corepack enable && corepack prepare pnpm@10.25.0 --activate
 
 COPY package.json pnpm-lock.yaml ./
@@ -32,6 +34,8 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+RUN apk add --no-cache openssl
+
 RUN corepack enable && corepack prepare pnpm@10.25.0 --activate
 
 COPY --from=build /app/package.json ./
@@ -41,4 +45,4 @@ COPY --from=build /app/dist ./dist
 
 EXPOSE 3000
 
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]

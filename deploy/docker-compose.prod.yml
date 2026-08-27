@@ -4,7 +4,7 @@
 # Uso:
 #   cd deploy
 #   cp .env.production.example .env.production   # completa los valores
-#   docker compose -f docker-compose.prod.yml up -d --build
+#   docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
 #
 # Solo nginx expone puertos públicos. backend y postgres quedan en la red interna.
 
@@ -74,7 +74,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "${NGINX_HTTP_PORT:-80}:80"
       # - "443:443"   # habilita cuando configures TLS (ver deploy/README.md)
     depends_on:
       - frontend
