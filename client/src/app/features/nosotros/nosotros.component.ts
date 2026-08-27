@@ -31,17 +31,29 @@ interface TeamMember {
     <!-- Pilares -->
     <div class="pilares">
       <div class="pilar-card">
-        <span class="pilar-icon">🛡️</span>
+        <span class="pilar-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </span>
         <strong>Protección accesible</strong>
         <p>Seguridad de nivel empresarial para cualquier emprendedor con un VPS.</p>
       </div>
       <div class="pilar-card">
-        <span class="pilar-icon">💬</span>
+        <span class="pilar-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+          </svg>
+        </span>
         <strong>Sin jerga técnica</strong>
         <p>Comunicamos cada amenaza en lenguaje humano. Siempre.</p>
       </div>
       <div class="pilar-card">
-        <span class="pilar-icon">⚡</span>
+        <span class="pilar-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+        </span>
         <strong>Respuesta en segundos</strong>
         <p>Detectamos y actuamos antes de que el daño se materialice.</p>
       </div>
@@ -54,21 +66,21 @@ interface TeamMember {
         [class.active]="activeTab() === 'mision'"
         (click)="activeTab.set('mision')"
       >
-        ✦ Misión
+        Misión
       </button>
       <button
         class="tab"
         [class.active]="activeTab() === 'vision'"
         (click)="activeTab.set('vision')"
       >
-        ◉ Visión
+        Visión
       </button>
       <button
         class="tab"
         [class.active]="activeTab() === 'equipo'"
         (click)="activeTab.set('equipo')"
       >
-        👥 Equipo
+        Equipo
       </button>
     </div>
 
@@ -201,7 +213,13 @@ interface TeamMember {
       text-align: center;
     }
 
-    .pilar-icon { font-size: 1.5rem; display: block; margin-bottom: 10px; }
+    .pilar-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 10px;
+      color: var(--color-accent);
+    }
 
     .pilar-card strong {
       display: block;
