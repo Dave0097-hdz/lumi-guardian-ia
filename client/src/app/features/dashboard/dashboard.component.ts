@@ -17,10 +17,15 @@ import { RealtimeService } from '../../core/services/realtime.service';
     <!-- Encabezado -->
     <div class="dashboard-header">
       <div class="header-title">
-        <span class="status-dot pulse"></span>
-        <h1>Protección Activa</h1>
+        <span class="status-dot" [class.pulse]="agenteConectado()"></span>
+        <h1>{{ agenteConectado() ? 'Protección Activa' : 'Sin agentes conectados' }}</h1>
       </div>
-      <p class="header-subtitle">Lumi se encuentra patrullando — última revisión hace 12 segundos.</p>
+      <p class="header-subtitle" *ngIf="agenteConectado()">
+        Lumi se encuentra patrullando{{ ultimaRevision() ? ' — ' + ultimaRevision() : '' }}.
+      </p>
+      <p class="header-subtitle" *ngIf="!agenteConectado()">
+        Instala el agente en un VPS para que Lumi empiece a monitorear.
+      </p>
     </div>
 
     <!-- Tarjetas de resumen -->
@@ -303,6 +308,11 @@ export class DashboardComponent implements OnInit {
   /** IDs recién llegados en vivo, para el destello visual sutil (I2). */
   alertasNuevas = signal<Set<string>>(new Set());
 
+  /** Estado de conexión del agente — controla el encabezado. */
+  agenteConectado = signal(false);
+  /** Texto relativo de la última revisión (heartbeat), o null si no hay. */
+  ultimaRevision = signal<string | null>(null);
+
   constructor(
     private readonly dashboardService: DashboardService,
     private readonly realtimeService: RealtimeService,
@@ -335,6 +345,34 @@ export class DashboardComponent implements OnInit {
 
   ngOnInit(): void {
     this.cargarAlertas();
+    this.cargarEstadoAgente();
+  }
+
+  private async cargarEstadoAgente(): Promise<void> {
+    try {
+      const { conectado, ultimoHeartbeat } = await this.dashboardService.getEstadoAgente();
+      this.agenteConectado.set(conectado);
+      this.ultimaRevision.set(
+        ultimoHeartbeat ? `última revisión ${this.tiempoRelativo(ultimoHeartbeat)}` : null,
+      );
+    } catch {
+      this.agenteConectado.set(false);
+      this.ultimaRevision.set(null);
+    }
+  }
+
+  /** Convierte un ISO timestamp en texto relativo en español (ej. "hace 12 segundos"). */
+  private tiempoRelativo(iso: string): string {
+    const diffMs = Date.now() - new Date(iso).getTime();
+    const seg = Math.max(0, Math.floor(diffMs / 1000));
+
+    if (seg < 60) return `hace ${seg} segundo${seg === 1 ? '' : 's'}`;
+    const min = Math.floor(seg / 60);
+    if (min < 60) return `hace ${min} minuto${min === 1 ? '' : 's'}`;
+    const hrs = Math.floor(min / 60);
+    if (hrs < 24) return `hace ${hrs} hora${hrs === 1 ? '' : 's'}`;
+    const dias = Math.floor(hrs / 24);
+    return `hace ${dias} día${dias === 1 ? '' : 's'}`;
   }
 
   trackById(_index: number, alerta: AlertaData): string {
