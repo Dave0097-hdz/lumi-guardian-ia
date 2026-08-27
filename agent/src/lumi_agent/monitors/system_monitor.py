@@ -43,7 +43,9 @@ class SystemMonitor(BaseMonitor):
         for proc in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_percent']):
             try:
                 info = proc.info
-                if info["cpu_percent"] > self.CPU_UMBRAL or info["memory_percent"] > self.MEM_UMBRAL:
+                cpu = info.get("cpu_percent") or 0.0
+                mem = info.get("memory_percent") or 0.0
+                if cpu > self.CPU_UMBRAL or mem > self.MEM_UMBRAL:
                     procesos.append({
                         "pid":     info["pid"],
                         "name":    info["name"],

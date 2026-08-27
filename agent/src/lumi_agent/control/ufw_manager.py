@@ -99,9 +99,9 @@ class UFWManager:
         return None
 
     def _consumir_cuota(self):
-        ahora = datetime.now(timezone.utc)
-        limite = ahora - timedelta(seconds=RATE_LIMIT_VENTANA_SEG)
+        limite = datetime.now(timezone.utc) - timedelta(seconds=RATE_LIMIT_VENTANA_SEG)
         with self._rate_lock:
+            ahora = datetime.now(timezone.utc)
             self._ops_recientes = [t for t in self._ops_recientes if t >= limite]
             if len(self._ops_recientes) >= RATE_LIMIT_OPS:
                 return False

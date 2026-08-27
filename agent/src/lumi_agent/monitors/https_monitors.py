@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 PATRON_NGINX = re.compile(
     r'(?P<ip>\S+) - - \[(?P<fecha>[^\]]+)\] '
     r'"(?P<metodo>\S+) (?P<ruta>\S+) \S+" '
-    r'(?P<status>\d{3}) \S+ "\S+" "(?P<user_agent>[^"]+)"'
+    r'(?P<status>\d{3}) \S+ "\S+" "(?P<user_agent>[^"]*)"'
 )
 
 # rutas que van a intentar reconocer y/o asaltar en wordpress
@@ -60,6 +60,9 @@ class HTTPMonitor(BaseMonitor):
         try:
             estado = os.stat(self.LOG_PATH)
             return estado.st_ino != self._inode
+            if estado.st_size < self._posicion:
+                logger.info("Truncado detectado en %s", self.LOG_PATH)
+                return True
         except FileNotFoundError:
             return True
 
@@ -103,7 +106,8 @@ class HTTPMonitor(BaseMonitor):
                     conteo_ip[ip] += 1
 
                     # punto 1: rutas sensibles en wordpress
-                    if ruta in RUTAS_SENSIBLES:
+                    ruta_limpia = ruta.split('?', 1)[0]
+                    if any(ruta_limpia.startswith(p) for p in RUTAS_SENSIBLES):
                         eventos.append({
                             "source":     "http",
                             "event_type": "wp_sensitive_route",
