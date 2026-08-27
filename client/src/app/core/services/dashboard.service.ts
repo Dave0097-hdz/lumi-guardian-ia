@@ -107,6 +107,19 @@ export class DashboardService {
   }
 
   /**
+   * Enriquece una sola alerta con el nombre de su VPS, reutilizando el mismo
+   * vpsMap cacheado que usa getAlertasPendientes(). Lo usa el canal en tiempo
+   * real (RealtimeService → DashboardComponent) para no duplicar esta lógica.
+   */
+  async enriquecerConVps(alerta: AlertaData): Promise<AlertaData> {
+    const vpsMap = await this.cargarVpsMap();
+    return {
+      ...alerta,
+      vpsNombre: vpsMap.get(alerta.vpsId) ?? alerta.vpsId,
+    };
+  }
+
+  /**
    * Calcula conteos por severidad a partir de las alertas DETECTADA.
    */
   calcularConteos(alertas: AlertaData[]): ConteoSeveridad {

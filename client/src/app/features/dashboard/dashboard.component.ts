@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChildren, QueryList, signal, computed } from '@angular/core';
+import { Component, OnInit, ViewChildren, QueryList, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AlertCardComponent } from '../../shared/components/alert-card/alert-card.component';
@@ -7,6 +7,7 @@ import {
   AlertaData,
   ConteoSeveridad,
 } from '../../core/services/dashboard.service';
+import { RealtimeService } from '../../core/services/realtime.service';
 
 @Component({
   standalone: true,
@@ -78,6 +79,7 @@ import {
       <app-alert-card
         *ngFor="let alerta of alertasFiltradas(); trackBy: trackById"
         [alerta]="alerta"
+        [class.recien-llegada]="alertasNuevas().has(alerta.id)"
         (bloquear)="onBloquear($event)"
         (marcarFalsoPositivo)="onMarcarFalsoPositivo($event)"
       ></app-alert-card>
@@ -228,6 +230,31 @@ import {
       text-align: center;
     }
 
+    /* Destello sutil al llegar una alerta en vivo por WebSocket (I2).
+       Nada intrusivo: un borde que aparece y se desvanece, coherente con el
+       tono silencioso de la marca. */
+    app-alert-card {
+      display: block;
+      border-radius: 12px;
+    }
+
+    app-alert-card.recien-llegada {
+      animation: destello-alerta 2s ease-out;
+    }
+
+    @keyframes destello-alerta {
+      0% {
+        box-shadow: 0 0 0 2px var(--color-accent, #00f0ff), 0 0 16px rgba(0, 240, 255, 0.5);
+      }
+      100% {
+        box-shadow: 0 0 0 0 transparent, 0 0 0 transparent;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      app-alert-card.recien-llegada { animation: none; }
+    }
+
     @media (max-width: 768px) {
       .summary-cards { grid-template-columns: repeat(2, 1fr); }
       .filter-bar { flex-wrap: wrap; }
@@ -273,7 +300,38 @@ export class DashboardComponent implements OnInit {
     return resultado;
   });
 
-  constructor(private readonly dashboardService: DashboardService) { }
+  /** IDs recién llegados en vivo, para el destello visual sutil (I2). */
+  alertasNuevas = signal<Set<string>>(new Set());
+
+  constructor(
+    private readonly dashboardService: DashboardService,
+    private readonly realtimeService: RealtimeService,
+  ) {
+    // Canal en tiempo real: cuando llega una alerta por WebSocket, la anteponemos
+    // a la lista. Los conteos (summaryCards) se recalculan solos por ser computed().
+    effect(() => {
+      const alerta = this.realtimeService.nuevaAlerta();
+      if (!alerta) return;
+
+      // Deduplicar por id (I3): si ya está en la lista, no hacer nada.
+      if (this.alertas().some((a) => a.id === alerta.id)) return;
+
+      // Enriquecer con el nombre del VPS igual que las demás (reutiliza vpsMap).
+      void this.dashboardService.enriquecerConVps(alerta).then((enriquecida) => {
+        this.alertas.update((actuales) => [enriquecida, ...actuales]);
+
+        // Marcar como nueva para el destello, y quitar la marca tras la animación.
+        this.alertasNuevas.update((set) => new Set(set).add(enriquecida.id));
+        setTimeout(() => {
+          this.alertasNuevas.update((set) => {
+            const copia = new Set(set);
+            copia.delete(enriquecida.id);
+            return copia;
+          });
+        }, 2000);
+      });
+    });
+  }
 
   ngOnInit(): void {
     this.cargarAlertas();
