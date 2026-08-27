@@ -1,59 +1,102 @@
-# Client
+# LUMI Guardián AI — Frontend
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.21.
+Dashboard web de LUMI Guardián AI. Permite registrar VPS, ver alertas de seguridad en tiempo real, gestionar bloqueos de IPs, configurar el nivel de autonomía y el control de red, todo en una interfaz pensada para usuarios no técnicos.
 
-## Development server
+## Stack
 
-To start a local development server, run:
+- **Angular 21** (standalone components, **zoneless** con signals).
+- **TypeScript** (tipado estricto, sin `any` sin justificar).
+- **RxJS** para flujos asíncronos puntuales.
+- **Socket.IO client** para el canal en tiempo real con el backend.
+- Fuentes vía `@fontsource` (Montserrat, Roboto, JetBrains Mono).
+- Cliente de API **autogenerado** con `@hey-api/openapi-ts` (no se escribe a mano).
+
+## Estructura
+
+```
+src/app/
+├── core/
+│   ├── api-client/     cliente HTTP autogenerado desde el Swagger del backend
+│   └── services/       servicios singleton que envuelven el cliente generado
+├── shared/             componentes reutilizables (toast, alert-card, modales)
+├── features/           un feature por dominio de negocio
+│   ├── auth/           login, registro, recuperar/restablecer contraseña
+│   ├── dashboard/      panel principal con alertas en tiempo real
+│   ├── vps/            listado, alta y detalle/configuración de VPS
+│   ├── alertas/        historial de alertas
+│   ├── bloqueos/       historial de bloqueos
+│   ├── whitelist/      control de red (IPs en lista blanca)
+│   ├── configuracion/  configuración de la cuenta
+│   ├── nosotros/       misión, visión y equipo
+│   └── shell/          layout principal (topbar + sidebar)
+└── environments/       apiUrl por entorno
+```
+
+## Puesta en marcha
+
+Requisitos: Node 20+, npm, y el backend corriendo (para las llamadas a la API y el WebSocket).
 
 ```bash
+# 1. Instalar dependencias
+npm install
+
+# 2. Configurar la URL del backend en src/environments/environment.ts
+#    (por defecto http://localhost:3000)
+
+# 3. Arrancar el servidor de desarrollo
 ng serve
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+La app queda en `http://localhost:4200`.
 
-## Code scaffolding
+## Cliente de API autogenerado
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+Para evitar desalineaciones de contrato entre backend y frontend, los servicios que hablan con la API **no se escriben a mano**: se generan desde el Swagger real del backend con `@hey-api/openapi-ts`.
 
-```bash
-ng generate component component-name
-```
+- El cliente vive en `src/app/core/api-client/` (`types.gen.ts`, `sdk.gen.ts`, `client.gen.ts`) y **nunca se edita a mano** — cualquier cambio se hace regenerando.
+- Los componentes nunca llaman al cliente generado directamente; lo hacen a través de los servicios de `core/services/`.
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
+**Regenerar** (con el backend corriendo):
 
 ```bash
-ng build
+# 1. Descargar el spec actualizado
+curl http://localhost:3000/api/docs-json -o ../docs/openapi.json
+
+# 2. Regenerar el cliente
+npm run api:generate
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+`docs/openapi.json` es la copia versionada del spec, para regenerar sin depender de que el backend esté arriba en ese momento.
 
-## Running unit tests
+## Autenticación
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+Gestionada por un único `AuthService`; los componentes nunca acceden a `localStorage` directamente.
 
-```bash
-ng test
-```
+- El `accessToken` se guarda en `localStorage` y se adjunta a cada request mediante el interceptor del cliente `fetch` (configurado una sola vez en el arranque, en `app.config.ts`).
+- El `refreshToken` viaja como cookie `HttpOnly` gestionada por el backend; el frontend no lo lee ni lo almacena.
+- Un `AuthGuard` nativo del router protege las rutas del dashboard.
 
-## Running end-to-end tests
+## Tiempo real (WebSocket)
 
-For end-to-end (e2e) testing, run:
+`RealtimeService` mantiene la conexión al namespace `/dashboard` del backend:
 
-```bash
-ng e2e
-```
+- Se conecta tras login/registro y al arrancar la app si ya hay sesión; se desconecta en logout.
+- Autentica enviando el `accessToken` en el handshake, y usa el token más reciente al reconectar.
+- Expone la última alerta recibida como signal; el dashboard la consume con `effect()`, la deduplica por id y la muestra al instante con un destello sutil.
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+Este canal se maneja aparte del cliente REST autogenerado (que no cubre WebSocket).
 
-## Additional Resources
+## Theming
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Identidad de marca en **modo oscuro exclusivo**. Todos los colores se definen como variables CSS (`--color-bg`, `--color-accent`, etc.), nunca hardcodeados, para dejar la puerta abierta a un modo claro futuro sin reescribir componentes.
+
+Los iconos son SVG inline (estilo feather), sin dependencias de librerías de iconos.
+
+## Scripts
+
+| Script | Acción |
+|---|---|
+| `ng serve` | Servidor de desarrollo en `:4200` |
+| `ng build` | Build de producción en `dist/` |
+| `npm run api:generate` | Regenerar el cliente de API desde el spec |
+| `ng test` | Tests (Vitest) |
