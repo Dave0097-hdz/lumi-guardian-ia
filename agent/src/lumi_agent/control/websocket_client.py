@@ -94,9 +94,9 @@ class WebSocketClient:
             logger.error("Payload de bloqueo no es dict: %s", type(data).__name__)
             return
 
-        bloqueo_id = str(data.get("bloqueoId", ""))
-        ip         = str(data.get("ip", ""))
-        motivo     = str(data.get("motivo", ""))
+        bloqueo_id = str(data.get("bloqueoId") or "")
+        ip         = str(data.get("ip") or "")
+        motivo     = str(data.get("motivo") or "")[:500]
 
         if not ip or not bloqueo_id:
             self._responder("bloqueo-resultado", bloqueo_id, False, "payload incompleto")
@@ -131,8 +131,8 @@ class WebSocketClient:
             logger.error("Payload de desbloqueo no es dict: %s", type(data).__name__)
             return
 
-        bloqueo_id = str(data.get("bloqueoId", ""))
-        ip         = str(data.get("ip", ""))
+        bloqueo_id = str(data.get("bloqueoId") or "")
+        ip         = str(data.get("ip") or "")
 
         if not ip or not bloqueo_id:
             self._responder("desbloqueo-resultado", bloqueo_id, False, "payload incompleto")

@@ -10,11 +10,11 @@ logger = logging.getLogger(__name__)
 
 # con este patron detectamos los intentos fallidos enn auth.log + read.me (1)
 PATRON_FALLO = re.compile(
-    r"(\w+\s+\d+\s+\d+:\d+:\d+).*Failed password for (\S+) from (\S+) port"
+    r"(\w+\s+\d+\s+\d+:\d+:\d+).*Failed password for (?:invalid user )?(S+) from (S+) port"
 )
 
 PATRON_USER_INVALID = re.compile(
-    r"(\w+\s+\d+\s+\d+:\d+:\d+).*Invalid user (\S+) from (\S+) port"
+    r"(\w+\s+\d+\s+\d+:\d+:\d+).*Failed password for (?:invalid user )?(\S+) from (\S+) port"
 )
 
 class SSHMonitor(BaseMonitor):
@@ -24,7 +24,7 @@ class SSHMonitor(BaseMonitor):
     # configuracion de los umbrales
     VENTANA_CORTA_MIN  = 5    # ataque explosivo
     VENTANA_LARGA_MIN  = 15   # persistencia
-    UMBRAL_CORTO       = 3    # intentos en 5 min para alertar
+    UMBRAL_CORTO       = 5    # intentos en 5 min para alertar
     UMBRAL_LARGO       = 7    # intentos en 15 min
 
     def __init__(self, interval_seconds: float = 5.0):
@@ -56,8 +56,10 @@ class SSHMonitor(BaseMonitor):
             estado = os.stat(self.LOG_PATH)
             if estado.st_ino != self._inode:
                 return True
-            else:
-                return False
+            if estado.st_size < self._posicion:
+                logger.info("Truncado detectado en %s", self.LOG_PATH)
+                return True
+            return False
         except FileNotFoundError:
             return True 
 
@@ -170,8 +172,8 @@ class SSHMonitor(BaseMonitor):
                         match = PATRON_USER_INVALID.search(linea)
                         if match:
                             hora_log  = match.group(1)
-                            user      = "unknown"
-                            ip        = match.group(2)
+                            user      = match.group(2)
+                            ip        = match.group(3)
                             severidad = "low"
 
                     if match:
