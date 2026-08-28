@@ -1,0 +1,90 @@
+# Compose de PRODUCCIÓN del sistema central (frontend + backend + postgres + nginx).
+# El agente Python NO va aquí: corre como servicio systemd dentro de cada VPS.
+#
+# Uso:
+#   cd deploy
+#   cp .env.production.example .env.production   # completa los valores
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Solo nginx expone puertos públicos. backend y postgres quedan en la red interna.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - lumi-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lumi-net
+
+  # Ejecuta las migraciones Prisma una sola vez y termina. El backend arranca
+  # después de que esto complete con éxito.
+  migrate:
+    build:
+      context: ../server
+      dockerfile: Dockerfile
+    command: ["pnpm", "prisma:migrate:deploy"]
+    env_file:
+      - .env.production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - lumi-net
+
+  backend:
+    build:
+      context: ../server
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    expose:
+      - "3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - lumi-net
+
+  frontend:
+    build:
+      context: ../client
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    expose:
+      - "80"
+    networks:
+      - lumi-net
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      # - "443:443"   # habilita cuando configures TLS (ver deploy/README.md)
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - lumi-net
+
+volumes:
+  lumi-pgdata:
+
+networks:
+  lumi-net:
+    driver: bridge

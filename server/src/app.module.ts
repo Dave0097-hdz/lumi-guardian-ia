@@ -15,6 +15,7 @@ import { BloqueosModule } from './bloqueos/bloqueos.module';
 import { WhitelistModule } from './whitelist/whitelist.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CronModule } from './cron/cron.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { CronModule } from './cron/cron.module';
 
     // Módulos del dominio
     CommonModule,
+    MailModule,
     PrismaModule,
     HealthModule,
     AuthModule,

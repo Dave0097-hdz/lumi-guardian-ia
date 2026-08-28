@@ -61,7 +61,10 @@ const SEVERIDAD_STYLES: Record<string, { bg: string; color: string }> = {
         </button>
 
         <span *ngIf="bloqueoEstado === 'bloqueada'" class="btn-success btn-sm">
-          Bloqueada ✓
+          Bloqueada
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
         </span>
 
         <span *ngIf="bloqueoEstado === 'fallido'" class="btn-error-msg">
@@ -161,6 +164,9 @@ const SEVERIDAD_STYLES: Record<string, { bg: string; color: string }> = {
       color: var(--color-success);
       border: 1px solid var(--color-success);
       cursor: default;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
     }
 
     .btn-error-msg {

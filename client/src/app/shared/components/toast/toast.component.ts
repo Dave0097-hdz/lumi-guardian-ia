@@ -40,7 +40,18 @@ export class ToastService {
         (click)="toastService.dismiss(msg.id)"
       >
         <span class="toast-icon">
-          {{ msg.type === 'success' ? '✓' : msg.type === 'error' ? '✕' : '⚠' }}
+          <svg *ngIf="msg.type === 'success'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          <svg *ngIf="msg.type === 'error'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+          <svg *ngIf="msg.type === 'warning'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
         </span>
         <span class="toast-text">{{ msg.text }}</span>
       </div>
@@ -88,7 +99,7 @@ export class ToastService {
       color: var(--color-severidad-media);
     }
 
-    .toast-icon { font-size: 1rem; font-weight: bold; }
+    .toast-icon { display: inline-flex; align-items: center; justify-content: center; }
     .toast-text { flex: 1; }
 
     @keyframes slideIn {

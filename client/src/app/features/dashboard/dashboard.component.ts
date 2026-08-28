@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChildren, QueryList, signal, computed } from '@angular/core';
+import { Component, OnInit, ViewChildren, QueryList, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AlertCardComponent } from '../../shared/components/alert-card/alert-card.component';
@@ -7,6 +7,7 @@ import {
   AlertaData,
   ConteoSeveridad,
 } from '../../core/services/dashboard.service';
+import { RealtimeService } from '../../core/services/realtime.service';
 
 @Component({
   standalone: true,
@@ -16,10 +17,15 @@ import {
     <!-- Encabezado -->
     <div class="dashboard-header">
       <div class="header-title">
-        <span class="status-dot pulse"></span>
-        <h1>Protección Activa</h1>
+        <span class="status-dot" [class.pulse]="agenteConectado()"></span>
+        <h1>{{ agenteConectado() ? 'Protección Activa' : 'Sin agentes conectados' }}</h1>
       </div>
-      <p class="header-subtitle">Lumi se encuentra patrullando — última revisión hace 12 segundos.</p>
+      <p class="header-subtitle" *ngIf="agenteConectado()">
+        Lumi se encuentra patrullando{{ ultimaRevision() ? ' — ' + ultimaRevision() : '' }}.
+      </p>
+      <p class="header-subtitle" *ngIf="!agenteConectado()">
+        Instala el agente en un VPS para que Lumi empiece a monitorear.
+      </p>
     </div>
 
     <!-- Tarjetas de resumen -->
@@ -78,6 +84,7 @@ import {
       <app-alert-card
         *ngFor="let alerta of alertasFiltradas(); trackBy: trackById"
         [alerta]="alerta"
+        [class.recien-llegada]="alertasNuevas().has(alerta.id)"
         (bloquear)="onBloquear($event)"
         (marcarFalsoPositivo)="onMarcarFalsoPositivo($event)"
       ></app-alert-card>
@@ -228,6 +235,31 @@ import {
       text-align: center;
     }
 
+    /* Destello sutil al llegar una alerta en vivo por WebSocket (I2).
+       Nada intrusivo: un borde que aparece y se desvanece, coherente con el
+       tono silencioso de la marca. */
+    app-alert-card {
+      display: block;
+      border-radius: 12px;
+    }
+
+    app-alert-card.recien-llegada {
+      animation: destello-alerta 2s ease-out;
+    }
+
+    @keyframes destello-alerta {
+      0% {
+        box-shadow: 0 0 0 2px var(--color-accent, #00f0ff), 0 0 16px rgba(0, 240, 255, 0.5);
+      }
+      100% {
+        box-shadow: 0 0 0 0 transparent, 0 0 0 transparent;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      app-alert-card.recien-llegada { animation: none; }
+    }
+
     @media (max-width: 768px) {
       .summary-cards { grid-template-columns: repeat(2, 1fr); }
       .filter-bar { flex-wrap: wrap; }
@@ -273,10 +305,74 @@ export class DashboardComponent implements OnInit {
     return resultado;
   });
 
-  constructor(private readonly dashboardService: DashboardService) { }
+  /** IDs recién llegados en vivo, para el destello visual sutil (I2). */
+  alertasNuevas = signal<Set<string>>(new Set());
+
+  /** Estado de conexión del agente — controla el encabezado. */
+  agenteConectado = signal(false);
+  /** Texto relativo de la última revisión (heartbeat), o null si no hay. */
+  ultimaRevision = signal<string | null>(null);
+
+  constructor(
+    private readonly dashboardService: DashboardService,
+    private readonly realtimeService: RealtimeService,
+  ) {
+    // Canal en tiempo real: cuando llega una alerta por WebSocket, la anteponemos
+    // a la lista. Los conteos (summaryCards) se recalculan solos por ser computed().
+    effect(() => {
+      const alerta = this.realtimeService.nuevaAlerta();
+      if (!alerta) return;
+
+      // Deduplicar por id (I3): si ya está en la lista, no hacer nada.
+      if (this.alertas().some((a) => a.id === alerta.id)) return;
+
+      // Enriquecer con el nombre del VPS igual que las demás (reutiliza vpsMap).
+      void this.dashboardService.enriquecerConVps(alerta).then((enriquecida) => {
+        this.alertas.update((actuales) => [enriquecida, ...actuales]);
+
+        // Marcar como nueva para el destello, y quitar la marca tras la animación.
+        this.alertasNuevas.update((set) => new Set(set).add(enriquecida.id));
+        setTimeout(() => {
+          this.alertasNuevas.update((set) => {
+            const copia = new Set(set);
+            copia.delete(enriquecida.id);
+            return copia;
+          });
+        }, 2000);
+      });
+    });
+  }
 
   ngOnInit(): void {
     this.cargarAlertas();
+    this.cargarEstadoAgente();
+  }
+
+  private async cargarEstadoAgente(): Promise<void> {
+    try {
+      const { conectado, ultimoHeartbeat } = await this.dashboardService.getEstadoAgente();
+      this.agenteConectado.set(conectado);
+      this.ultimaRevision.set(
+        ultimoHeartbeat ? `última revisión ${this.tiempoRelativo(ultimoHeartbeat)}` : null,
+      );
+    } catch {
+      this.agenteConectado.set(false);
+      this.ultimaRevision.set(null);
+    }
+  }
+
+  /** Convierte un ISO timestamp en texto relativo en español (ej. "hace 12 segundos"). */
+  private tiempoRelativo(iso: string): string {
+    const diffMs = Date.now() - new Date(iso).getTime();
+    const seg = Math.max(0, Math.floor(diffMs / 1000));
+
+    if (seg < 60) return `hace ${seg} segundo${seg === 1 ? '' : 's'}`;
+    const min = Math.floor(seg / 60);
+    if (min < 60) return `hace ${min} minuto${min === 1 ? '' : 's'}`;
+    const hrs = Math.floor(min / 60);
+    if (hrs < 24) return `hace ${hrs} hora${hrs === 1 ? '' : 's'}`;
+    const dias = Math.floor(hrs / 24);
+    return `hace ${dias} día${dias === 1 ? '' : 's'}`;
   }
 
   trackById(_index: number, alerta: AlertaData): string {

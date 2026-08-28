@@ -18,6 +18,16 @@ export const routes: Routes = [
             import('./features/auth/register/register.component').then((m) => m.RegisterComponent),
     },
     {
+        path: 'forgot-password',
+        loadComponent: () =>
+            import('./features/auth/forgot-password/forgot-password.component').then((m) => m.ForgotPasswordComponent),
+    },
+    {
+        path: 'reset-password',
+        loadComponent: () =>
+            import('./features/auth/reset-password/reset-password.component').then((m) => m.ResetPasswordComponent),
+    },
+    {
         path: 'dashboard',
         canActivate: [authGuard],
         loadComponent: () =>
@@ -52,6 +62,16 @@ export const routes: Routes = [
                 path: 'whitelist',
                 loadComponent: () =>
                     import('./features/whitelist/whitelist.component').then((m) => m.WhitelistComponent),
+            },
+            {
+                path: 'configuracion',
+                loadComponent: () =>
+                    import('./features/configuracion/configuracion.component').then((m) => m.ConfiguracionComponent),
+            },
+            {
+                path: 'nosotros',
+                loadComponent: () =>
+                    import('./features/nosotros/nosotros.component').then((m) => m.NosotrosComponent),
             },
         ],
     },

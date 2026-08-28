@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Injector, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import {
   authControllerLogin,
@@ -7,6 +7,7 @@ import {
   authControllerLogout,
 } from '../api-client/sdk.gen';
 import type { LoginDto, RegisterDto } from '../api-client/types.gen';
+import { RealtimeService } from './realtime.service';
 
 interface UserData {
   id: string;
@@ -19,7 +20,25 @@ const USER_KEY = 'lumi_user';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
+  // RealtimeService se resuelve de forma perezosa para evitar el ciclo de
+  // dependencias (RealtimeService inyecta AuthService para leer el token).
+  private readonly injector = inject(Injector);
+
   constructor(private readonly router: Router) { }
+
+  private get realtime(): RealtimeService {
+    return this.injector.get(RealtimeService);
+  }
+
+  /**
+   * Conecta el canal WebSocket si hay sesión activa. Se llama tras login/register
+   * y en el arranque de la app cuando ya hay un accessToken guardado.
+   */
+  conectarRealtime(): void {
+    if (this.isAuthenticated()) {
+      this.realtime.conectar();
+    }
+  }
 
   async login(email: string, password: string): Promise<void> {
     const response = await authControllerLogin({
@@ -32,6 +51,7 @@ export class AuthService {
 
     const data = response.data as { accessToken: string; user: UserData };
     this.saveSession(data);
+    this.realtime.conectar();
   }
 
   async register(nombre: string, email: string, password: string): Promise<void> {
@@ -45,6 +65,7 @@ export class AuthService {
 
     const data = response.data as { accessToken: string; user: UserData };
     this.saveSession(data);
+    this.realtime.conectar();
   }
 
   /**
@@ -78,6 +99,7 @@ export class AuthService {
     } catch {
       // Si falla el logout remoto, limpiamos localmente de todas formas
     }
+    this.realtime.desconectar();
     this.clearSession();
     this.router.navigate(['/login']);
   }

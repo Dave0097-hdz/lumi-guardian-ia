@@ -21,6 +21,8 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @ApiTags('auth')
@@ -115,6 +117,24 @@ export class AuthController {
         this.clearRefreshCookie(res);
 
         return result;
+    }
+
+    @Post('forgot-password')
+    @HttpCode(HttpStatus.OK)
+    @Throttle({ default: { ttl: 60000, limit: 3 } })
+    @ApiOperation({ summary: 'Solicitar enlace para recuperar contraseña' })
+    @ApiResponse({ status: 200, description: 'Si el email existe, se envía el enlace' })
+    async forgotPassword(@Body() dto: ForgotPasswordDto) {
+        return this.authService.forgotPassword(dto.email);
+    }
+
+    @Post('reset-password')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Restablecer contraseña con token del email' })
+    @ApiResponse({ status: 200, description: 'Contraseña actualizada' })
+    @ApiResponse({ status: 400, description: 'Token inválido o expirado' })
+    async resetPassword(@Body() dto: ResetPasswordDto) {
+        return this.authService.resetPassword(dto.token, dto.password);
     }
 
     // ─── COOKIE HELPERS ────────────────────────────

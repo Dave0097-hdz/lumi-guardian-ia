@@ -71,13 +71,21 @@ import { VpsService } from '../../../core/services/vps.service';
             <div class="token-display">
               <code>{{ agentToken() }}</code>
               <button class="btn-copy" (click)="copyToken()">
-                {{ copied() ? '✓ Copiado' : 'Copiar' }}
+                <svg *ngIf="copied()" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                {{ copied() ? 'Copiado' : 'Copiar' }}
               </button>
             </div>
           </div>
 
           <div class="warning-box">
-            ⚠️ Guarda este token ahora — no podrás volver a verlo.
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            Guarda este token ahora — no podrás volver a verlo.
           </div>
 
           <button class="btn-primary btn-modal" (click)="onClose()">Cerrar</button>
@@ -221,6 +229,9 @@ import { VpsService } from '../../../core/services/vps.service';
     }
 
     .btn-copy {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
       padding: 4px 12px;
       font-size: 0.75rem;
       border-radius: 6px;
@@ -232,6 +243,9 @@ import { VpsService } from '../../../core/services/vps.service';
     }
 
     .warning-box {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
       background: rgba(245, 158, 11, 0.1);
       border: 1px solid rgba(245, 158, 11, 0.3);
       border-radius: 10px;
@@ -240,6 +254,8 @@ import { VpsService } from '../../../core/services/vps.service';
       color: var(--color-severidad-media);
       margin-bottom: 20px;
     }
+
+    .warning-box svg { flex-shrink: 0; margin-top: 1px; }
   `],
 })
 export class CreateVpsModalComponent {

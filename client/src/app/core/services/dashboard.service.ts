@@ -107,6 +107,50 @@ export class DashboardService {
   }
 
   /**
+   * Enriquece una sola alerta con el nombre de su VPS, reutilizando el mismo
+   * vpsMap cacheado que usa getAlertasPendientes(). Lo usa el canal en tiempo
+   * real (RealtimeService → DashboardComponent) para no duplicar esta lógica.
+   */
+  async enriquecerConVps(alerta: AlertaData): Promise<AlertaData> {
+    const vpsMap = await this.cargarVpsMap();
+    return {
+      ...alerta,
+      vpsNombre: vpsMap.get(alerta.vpsId) ?? alerta.vpsId,
+    };
+  }
+
+  /**
+   * Estado de conexión del agente para el encabezado del dashboard.
+   * "Conectado" = al menos un VPS con estado ACTIVO. Devuelve también el heartbeat
+   * más reciente entre los VPS activos, para mostrar cuándo fue la última revisión.
+   */
+  async getEstadoAgente(): Promise<{ conectado: boolean; ultimoHeartbeat: string | null }> {
+    const response = await vpsControllerFindAll();
+    if (response.error) {
+      return { conectado: false, ultimoHeartbeat: null };
+    }
+
+    const vpsList = response.data as {
+      estado: string;
+      ultimoHeartbeat: string | null;
+    }[];
+
+    const activos = vpsList.filter((v) => v.estado === 'ACTIVO');
+    if (activos.length === 0) {
+      return { conectado: false, ultimoHeartbeat: null };
+    }
+
+    // Heartbeat más reciente entre los VPS activos.
+    const ultimoHeartbeat = activos
+      .map((v) => v.ultimoHeartbeat)
+      .filter((h): h is string => h !== null)
+      .sort()
+      .at(-1) ?? null;
+
+    return { conectado: true, ultimoHeartbeat };
+  }
+
+  /**
    * Calcula conteos por severidad a partir de las alertas DETECTADA.
    */
   calcularConteos(alertas: AlertaData[]): ConteoSeveridad {

@@ -52,7 +52,12 @@ import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/
             [class.active]="nivelAutonomia() === 'SOLO_ALERTAR'"
             (click)="nivelAutonomia.set('SOLO_ALERTAR')"
           >
-            <span class="autonomy-icon">🔔</span>
+            <span class="autonomy-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+            </span>
             <strong class="autonomy-name">Solo Alertar</strong>
             <p class="autonomy-desc">Lumi detecta y te notifica. Tú decides cada acción por tu cuenta.</p>
           </div>
@@ -62,7 +67,13 @@ import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/
             [class.active]="nivelAutonomia() === 'SUGERIR'"
             (click)="nivelAutonomia.set('SUGERIR')"
           >
-            <span class="autonomy-icon">💡</span>
+            <span class="autonomy-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <line x1="9" y1="18" x2="15" y2="18"/>
+                <line x1="10" y1="22" x2="14" y2="22"/>
+                <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/>
+              </svg>
+            </span>
             <strong class="autonomy-name">Sugerir</strong>
             <p class="autonomy-desc">Lumi notifica y te sugiere una acción. Confirmas con un clic.</p>
           </div>
@@ -72,7 +83,11 @@ import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/
             [class.active]="nivelAutonomia() === 'GUARDIAN_TOTAL'"
             (click)="nivelAutonomia.set('GUARDIAN_TOTAL')"
           >
-            <span class="autonomy-icon">🛡️</span>
+            <span class="autonomy-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+            </span>
             <strong class="autonomy-name">Guardián Total</strong>
             <p class="autonomy-desc">Lumi actúa automáticamente ante amenazas y te notifica después.</p>
           </div>
@@ -133,6 +148,28 @@ import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/
           </label>
         </div>
 
+        @if (notifEmail()) {
+          <div class="severidades-row">
+            <div class="severidades-info">
+              <strong>¿Para qué severidades?</strong>
+              <p>Solo recibirás correo de las severidades seleccionadas</p>
+            </div>
+            <div class="chips">
+              @for (sev of severidadesDisponibles; track sev.value) {
+                <button
+                  type="button"
+                  class="chip"
+                  [class.active]="severidadesNotif().includes(sev.value)"
+                  [style.--chip-color]="sev.color"
+                  (click)="toggleSeveridad(sev.value)"
+                >
+                  {{ sev.label }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+
         <div class="toggle-row">
           <div class="toggle-info">
             <strong>Notificarme en el dashboard</strong>
@@ -152,10 +189,21 @@ import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/
 
         <div class="danger-actions">
           <button class="btn-danger-outline" (click)="regenerarToken()">
-            🔄 Regenerar token del agente
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <polyline points="23 4 23 10 17 10"/>
+              <polyline points="1 20 1 14 7 14"/>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+            Regenerar token del agente
           </button>
           <button class="btn-danger-outline btn-delete" (click)="eliminarServidor()">
-            🗑️ Eliminar servidor
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              <line x1="10" y1="11" x2="10" y2="17"/>
+              <line x1="14" y1="11" x2="14" y2="17"/>
+            </svg>
+            Eliminar servidor
           </button>
         </div>
       </section>
@@ -196,11 +244,19 @@ import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/
         </div>
 
         <button class="btn-copy-token" (click)="copyRegeneratedToken()">
-          {{ tokenCopied() ? '✓ Copiado al portapapeles' : 'Copiar token' }}
+          <svg *ngIf="tokenCopied()" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          {{ tokenCopied() ? 'Copiado al portapapeles' : 'Copiar token' }}
         </button>
 
         <div class="token-warning">
-          ⚠️ Guarda este token ahora — no podrás volver a verlo después de cerrar este diálogo.
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          Guarda este token ahora — no podrás volver a verlo después de cerrar este diálogo.
         </div>
 
         <button class="btn-primary btn-close-modal" (click)="closeTokenModal()">Cerrar</button>
@@ -306,7 +362,16 @@ import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/
       background: rgba(0, 240, 255, 0.05);
     }
 
-    .autonomy-icon { font-size: 1.3rem; display: block; margin-bottom: 8px; }
+    .autonomy-icon {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+      color: var(--color-text-secondary);
+    }
+
+    .autonomy-card.active .autonomy-icon {
+      color: var(--color-accent);
+    }
 
     .autonomy-name {
       font-size: 0.9rem;
@@ -401,6 +466,58 @@ import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/
       margin-top: 2px;
     }
 
+    /* Chips de severidad */
+    .severidades-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 0 12px 20px;
+      border-bottom: 1px solid var(--color-input-border);
+    }
+
+    .severidades-info strong {
+      font-size: 0.85rem;
+      color: var(--color-text-primary);
+      display: block;
+    }
+
+    .severidades-info p {
+      font-size: 0.78rem;
+      color: var(--color-text-muted);
+      margin-top: 2px;
+    }
+
+    .chips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .chip {
+      padding: 5px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--color-input-border);
+      background: transparent;
+      color: var(--color-text-muted);
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .chip:hover {
+      border-color: var(--chip-color);
+      color: var(--color-text-primary);
+    }
+
+    .chip.active {
+      border-color: var(--chip-color);
+      background: color-mix(in srgb, var(--chip-color) 18%, transparent);
+      color: var(--chip-color);
+    }
+
     .toggle {
       position: relative;
       width: 44px;
@@ -451,6 +568,9 @@ import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/
     }
 
     .btn-danger-outline {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
       padding: 8px 16px;
       font-size: 0.8rem;
       border-radius: 8px;
@@ -535,6 +655,10 @@ import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/
 
     .btn-copy-token {
       width: 100%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
       padding: 10px;
       font-size: 0.8rem;
       border-radius: 8px;
@@ -551,6 +675,9 @@ import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/
     }
 
     .token-warning {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
       background: rgba(245, 158, 11, 0.1);
       border: 1px solid rgba(245, 158, 11, 0.3);
       border-radius: 10px;
@@ -559,6 +686,8 @@ import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/
       color: var(--color-severidad-media);
       margin-bottom: 16px;
     }
+
+    .token-warning svg { flex-shrink: 0; margin-top: 1px; }
 
     .btn-close-modal {
       width: 100%;
@@ -592,6 +721,14 @@ export class VpsDetailComponent implements OnInit {
   umbralRam = signal(90);
   notifEmail = signal(true);
   notifDashboard = signal(true);
+  severidadesNotif = signal<string[]>([]);
+
+  readonly severidadesDisponibles: { value: string; label: string; color: string }[] = [
+    { value: 'BAJA', label: 'Baja', color: 'var(--color-severidad-baja, #64748b)' },
+    { value: 'MEDIA', label: 'Media', color: 'var(--color-severidad-media, #f59e0b)' },
+    { value: 'ALTA', label: 'Alta', color: 'var(--color-severidad-alta, #f97316)' },
+    { value: 'CRITICA', label: 'Crítica', color: 'var(--color-error, #ef4444)' },
+  ];
 
   private vpsId = '';
 
@@ -607,6 +744,14 @@ export class VpsDetailComponent implements OnInit {
     this.loadData();
   }
 
+  toggleSeveridad(sev: string): void {
+    this.severidadesNotif.update((actuales) =>
+      actuales.includes(sev)
+        ? actuales.filter((s) => s !== sev)
+        : [...actuales, sev],
+    );
+  }
+
   async guardarCambios(): Promise<void> {
     this.isSaving.set(true);
     this.errorMsg.set('');
@@ -618,6 +763,7 @@ export class VpsDetailComponent implements OnInit {
         umbralRamAlerta: this.umbralRam(),
         notifEmail: this.notifEmail(),
         notifDashboard: this.notifDashboard(),
+        severidadesNotif: this.severidadesNotif(),
       });
       this.toast.show('Cambios guardados correctamente', 'success');
     } catch {
@@ -686,6 +832,7 @@ export class VpsDetailComponent implements OnInit {
       this.umbralRam.set(config.umbralRamAlerta);
       this.notifEmail.set(config.notifEmail);
       this.notifDashboard.set(config.notifDashboard);
+      this.severidadesNotif.set(config.severidadesNotif ?? []);
     } catch {
       this.errorMsg.set('Error al cargar la configuración');
     } finally {
