@@ -20,6 +20,8 @@ from lumi_agent.monitors.https_monitors import HTTPMonitor
 from lumi_agent.senders.agent_sender import AgenteSender
 #nuevo
 from lumi_agent.core.agent_config import AgentConfig
+from lumi_agent.control.ufw_manager import UFWManager
+from lumi_agent.control.websocket_client import WebSocketClient
 
 logger = logging.getLogger(__name__)
 
@@ -114,8 +116,30 @@ def main() -> None:
         sender = None
 
     cola = Queue(maxsize=QUEUE_MAXSIZE)
+
     stop_event = threading.Event()
     registrar_senales(stop_event)
+
+    # --- Canal de control por WebSocket (Fase 5) ---
+    hilo_ws = None
+    control_cfg = config.get("control", {})
+
+    if sender:
+        ufw = UFWManager(
+            backend_host=agent_cfg.backend_url,
+            whitelist_extra=control_cfg.get("whitelist_ip", []),
+            permitir_privadas=control_cfg.get("permitir_privadas", True),
+        )
+        
+        ws = WebSocketClient(agent_cfg, ufw)
+        hilo_ws = threading.Thread(
+            target=ws.run_forever,
+            args=(stop_event,),
+            name="websocket-control",
+        )
+        hilo_ws.start()
+    else:
+        logger.info("Canal de control desactivado — sin credenciales")
 
     monitores = [
         SystemMonitor(interval_seconds=config["sensors"]["system_interval_seconds"]),
@@ -152,6 +176,8 @@ def main() -> None:
     for hilo in hilos_monitores:
         hilo.join(timeout=10)
     hilo_consumidor.join(timeout=15)
+    if hilo_ws is not None:
+        hilo_ws.join(timeout=10)
 
     storage.cerrar()
     logger.info("Agente detenido de forma limpia.")

@@ -1,7 +1,7 @@
 import os
 import sys
 import logging
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +34,7 @@ class AgentConfig:
         self.vps_id      = os.environ["LUMI_VPS_ID"]
         self.token       = os.environ["LUMI_AGENT_TOKEN"]
         self.backend_url = os.environ["LUMI_BACKEND_URL"].rstrip("/") + "/"
+        self.backend_host = urlparse(self.backend_url).hostname or ""
 
         logger.info(
             "Agente identificado — VPS: %s, Backend: %s",
