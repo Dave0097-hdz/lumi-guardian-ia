@@ -38,9 +38,7 @@ def consumidor(stop_event: threading.Event, cola: Queue,
     logger.info("Consumidor iniciado (batch=%d)", batch_size)
     buffer = []
     ultimo_mantenimiento = time.monotonic()
-
     ultimo_heartbeat = time.monotonic()
-
 
     while not stop_event.is_set() or not cola.empty():
         try:
@@ -52,7 +50,10 @@ def consumidor(stop_event: threading.Event, cola: Queue,
         if len(buffer) >= batch_size:
             storage.guardar_eventos(buffer)
 
-            if sender:
+            # Solo enviar si NO estamos apagando. Sin esta comprobacion,
+            # el consumidor se queda atrapado en reintentos del sender
+            # mientras main.py cierra la base de datos por debajo.
+            if sender and not stop_event.is_set():
                 for evento in buffer:
                     if evento.get("source") == "system":
                         sender.enviar_metrica(evento)
@@ -62,14 +63,17 @@ def consumidor(stop_event: threading.Event, cola: Queue,
             buffer.clear()
 
         ahora = time.monotonic()
-        if ahora - ultimo_mantenimiento >= MANTENIMIENTO_INTERVALO_SEG:
-            storage.limpiar_antiguos()
-            storage.limitar_por_tamano()
-            ultimo_mantenimiento = ahora
 
-        if sender and (ahora - ultimo_heartbeat) >= HEARTBEAT_INTERVALO_SEG:
-            sender.enviar_heartbeat()
-            ultimo_heartbeat = ahora
+        # Mantenimiento y heartbeat solo si no estamos apagando
+        if not stop_event.is_set():
+            if ahora - ultimo_mantenimiento >= MANTENIMIENTO_INTERVALO_SEG:
+                storage.limpiar_antiguos()
+                storage.limitar_por_tamano()
+                ultimo_mantenimiento = ahora
+
+            if sender and (ahora - ultimo_heartbeat) >= HEARTBEAT_INTERVALO_SEG:
+                sender.enviar_heartbeat()
+                ultimo_heartbeat = ahora
 
     if buffer:
         logger.info("Vaciando %d eventos restantes antes de cerrar.", len(buffer))
@@ -106,10 +110,11 @@ def main() -> None:
         logger.critical("No se pudo inicializar el storage: %s", e)
         sys.exit(1)
 
+    stop_event = threading.Event()
     # AgenteSender opcional — si no hay credenciales, opera en modo local
     try:
         agent_cfg = AgentConfig()
-        sender = AgenteSender(agent_cfg)
+        sender = AgenteSender(agent_cfg, stop_event)
         logger.info("AgenteSender activo — conectado al backend")
     except RuntimeError as e:
         logger.warning("%s — operando en modo local sin envio", e)

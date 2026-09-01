@@ -15,8 +15,9 @@ class AgenteSender:
     La identidad viene de AgentConfig (variables de entorno).
     """
 
-    def __init__(self, agent_config: AgentConfig):
+    def __init__(self, agent_config: AgentConfig, stop_event=None):
         self.cfg = agent_config
+        self._stop = stop_event
 
     def _enviar_con_retry(self, url: str, payload: dict) -> bool:
         for intento in range(MAX_REINTENTOS):
