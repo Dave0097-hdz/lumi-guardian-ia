@@ -1,8 +1,11 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import * as express from 'express';
 import helmet from 'helmet';
-import * as cookieParser from 'cookie-parser';
+import cookieParser = require('cookie-parser');
+import { join } from 'path';
+import { Request, Response } from 'express';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ConfigService } from '@nestjs/config';
@@ -16,6 +19,11 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   const port = configService.get<number>('app.port') ?? 3000;
   const nodeEnv = configService.get<string>('app.nodeEnv');
+
+  app.getHttpAdapter().get('/agent/install', (_request: Request, response: Response) => {
+    response.sendFile(join(process.cwd(), 'public', 'install.sh'));
+  });
+  app.use('/agent', express.static(join(process.cwd(), 'public', 'agent')));
 
   // Prefijo global para todos los endpoints
   app.setGlobalPrefix('api/v1');

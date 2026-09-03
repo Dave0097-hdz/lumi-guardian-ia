@@ -122,7 +122,6 @@ def main() -> None:
 
     cola = Queue(maxsize=QUEUE_MAXSIZE)
 
-    stop_event = threading.Event()
     registrar_senales(stop_event)
 
     # --- Canal de control por WebSocket (Fase 5) ---
