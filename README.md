@@ -66,9 +66,9 @@ La seguridad se aplica al propio producto, no solo a lo que protege:
 
 | Componente | Estado |
 |---|---|
-| Backend (NestJS) | Funcional — Auth, VPS, Alertas, Bloqueos, Configuración, Whitelist, Métricas, Agent, WebSocket, correo |
-| Frontend (Angular) | Funcional — Auth, Dashboard en tiempo real, gestión de VPS, historial de alertas y bloqueos, control de red, configuración |
-| Agente (Python) | En desarrollo activo |
+| Backend (NestJS) | Funcional — Auth, VPS, Alertas, Bloqueos, Configuración, Whitelist, Agent, WebSocket, correo y persistencia con Prisma/PostgreSQL |
+| Frontend (Angular) | Funcional — Auth, Dashboard en tiempo real, gestión de VPS, historial de alertas y bloqueos, control de red y configuración |
+| Agente (Python) | Funcional — monitoreo de sistema, detección SSH/HTTP, almacenamiento local SQLite, envío de alertas y métricas, heartbeat y control de bloqueos mediante UFW |
 
 ## Equipo y roles
 
