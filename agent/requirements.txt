@@ -1,3 +1,4 @@
 # LUMI Guardian Agent - Dependencies
 psutil>=5.9
 requests>=2.31
+python-socketio[client]>=5.11

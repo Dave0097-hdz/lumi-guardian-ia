@@ -242,7 +242,7 @@ export class VpsService {
       `export LUMI_BACKEND_URL="${publicUrl}"`,
       '',
       '# TODO: instrucciones de descarga e instalación del agente',
-      '# curl -fsSL ${LUMI_BACKEND_URL}/agent/install | bash',
+      'curl -fsSL "${LUMI_BACKEND_URL}/agent/install" | sudo -E bash',
     ].join('\n');
   }
 

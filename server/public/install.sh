@@ -148,8 +148,6 @@ EnvironmentFile=${ENV_FILE}
 ExecStart=${AGENT_DIR}/.venv/bin/python3 ${AGENT_DIR}/main.py
 Restart=on-failure
 RestartSec=5
-StandardOutput=append:${AGENT_DIR}/logs/agent.log
-StandardError=append:${AGENT_DIR}/logs/agent.log
 
 [Install]
 WantedBy=multi-user.target
