@@ -4,19 +4,22 @@ Dashboard web de LUMI Guardián AI. Permite registrar VPS, ver alertas de seguri
 
 ## Stack
 
-- **Angular 21** (standalone components, **zoneless** con signals).
-- **TypeScript** (tipado estricto, sin `any` sin justificar).
-- **RxJS** para flujos asíncronos puntuales.
-- **Socket.IO client** para el canal en tiempo real con el backend.
+- **Angular 21** (standalone components y signals).
+- **TypeScript 5.9** (tipado estricto, sin `any` sin justificar).
+- **SCSS** para estilos globales y de componentes.
+- **RxJS 7.8** para flujos asíncronos puntuales.
+- **Socket.IO client 4.8** para el canal en tiempo real con el backend.
 - Fuentes vía `@fontsource` (Montserrat, Roboto, JetBrains Mono).
-- Cliente de API **autogenerado** con `@hey-api/openapi-ts` (no se escribe a mano).
+- Cliente de API **autogenerado** con `@hey-api/openapi-ts` y `@hey-api/client-fetch` (no se escribe a mano).
+- Gestor de paquetes **npm 10**.
 
 ## Estructura
 
 ```
 src/app/
 ├── core/
-│   ├── api-client/     cliente HTTP autogenerado desde el Swagger del backend
+│   ├── api-client/     cliente HTTP autogenerado desde el OpenAPI del backend
+│   ├── guards/         protección de rutas
 │   └── services/       servicios singleton que envuelven el cliente generado
 ├── shared/             componentes reutilizables (toast, alert-card, modales)
 ├── features/           un feature por dominio de negocio
@@ -32,9 +35,11 @@ src/app/
 └── environments/       apiUrl por entorno
 ```
 
+El cliente REST vive en `src/app/core/api-client/` y se regenera desde el contrato OpenAPI expuesto por el backend. Los componentes consumen los servicios de `core/services/` y no llaman directamente al cliente generado.
+
 ## Puesta en marcha
 
-Requisitos: Node 20+, npm, y el backend corriendo (para las llamadas a la API y el WebSocket).
+Requisitos: Node 20+, npm 10, y el backend corriendo (para las llamadas a la API y el WebSocket).
 
 ```bash
 # 1. Instalar dependencias
@@ -59,14 +64,9 @@ Para evitar desalineaciones de contrato entre backend y frontend, los servicios 
 **Regenerar** (con el backend corriendo):
 
 ```bash
-# 1. Descargar el spec actualizado
-curl http://localhost:3000/api/docs-json -o ../docs/openapi.json
-
-# 2. Regenerar el cliente
+# Regenerar el cliente desde el contrato OpenAPI configurado
 npm run api:generate
 ```
-
-`docs/openapi.json` es la copia versionada del spec, para regenerar sin depender de que el backend esté arriba en ese momento.
 
 ## Autenticación
 
@@ -99,4 +99,3 @@ Los iconos son SVG inline (estilo feather), sin dependencias de librerías de ic
 | `ng serve` | Servidor de desarrollo en `:4200` |
 | `ng build` | Build de producción en `dist/` |
 | `npm run api:generate` | Regenerar el cliente de API desde el spec |
-| `ng test` | Tests (Vitest) |

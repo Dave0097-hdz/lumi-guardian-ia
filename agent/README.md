@@ -1,6 +1,6 @@
 # LUMI Agent
 
-Agente de telemetría y seguridad en Python para **LUMI Guardián AI**. Monitorea métricas del sistema y eventos de seguridad (intentos de fuerza bruta SSH, reconocimiento HTTP en WordPress), los almacena localmente en SQLite y los transmite al backend central de forma segura.
+Agente de telemetría y seguridad en Python para **LUMI Guardián AI**. Monitorea métricas del sistema y eventos de seguridad (intentos de fuerza bruta SSH, reconocimiento HTTP en WordPress), los almacena localmente en SQLite y los transmite al backend central de forma segura. También recibe órdenes de control por Socket.IO para aplicar bloqueos locales mediante UFW.
 
 ---
 
@@ -39,9 +39,9 @@ Adicionalmente, `psutil.process_iter()` con el argumento `attrs` (lista de atrib
 ## Instalación
 
 ```bash
-# 1. Clona el repositorio
-git clone git@github.com:warmnoise/lumi-agent.git
-cd lumi-agent
+# 1. Clona el repositorio principal
+git clone https://github.com/Dave0097-hdz/lumi-guardian-ia.git
+cd lumi-guardian-ia/agent
 
 # 2. Crea el entorno virtual
 python3.11 -m venv .venv
@@ -65,7 +65,7 @@ export AGENT_TOKEN="tu_token_bearer_aqui"
 export INTERNAL_SECRET_KEY="tu_llave_interna_aqui"
 ```
 
-Si alguna falta, el agente arranca en **modo local** — almacena eventos en SQLite pero no los envía al backend. Útil para desarrollo y pruebas.
+Si alguna falta, el agente arranca en **modo local** — almacena eventos en SQLite pero no los envía al backend. Útil para desarrollo local.
 
 Para persistirlas entre sesiones, agrégalas a `~/.bashrc` o crea un archivo `.env` en la raíz (está en `.gitignore`, no se sube al repo):
 
@@ -85,7 +85,7 @@ source .env && python3 main.py
 
 ## Configuración
 
-El archivo de configuración es `config/agent.toml`. **No está en el repositorio** (`.gitignore`) porque puede contener URLs internas. Crea el tuyo a partir de esta plantilla:
+El archivo de configuración es `config/agent.toml`. Usa `config/agent.toml.example` como base y completa los valores locales. El archivo de trabajo puede contener URLs internas, por lo que no debe versionarse.
 
 ```toml
 [agent]
@@ -107,6 +107,10 @@ log_batch_size          = 100
 [backend]
 url_metricas = "http://TU_BACKEND/api/v1/agent/metricas"
 url_alerta   = "http://TU_BACKEND/api/v1/internal/alerta"
+
+[control]
+whitelist_ip = []
+permitir_privadas = true
 ```
 
 El agente valida todas las claves al arrancar y falla con error descriptivo si falta alguna — no arranca con config incompleta.
@@ -160,22 +164,27 @@ lumi-agent/
 │   └── lumi.db             # SQLite generado en runtime — NO subir al repo
 ├── logs/
 │   └── agent.log           # Logs rotativos — NO subir al repo
-├── lumi_agent/
+├── src/lumi_agent/
 │   ├── core/
 │   │   ├── base_monitor.py # Contrato base para todos los monitores
+│   │   ├── agent_config.py  # Credenciales y URL del backend
 │   │   ├── config.py       # Carga y valida agent.toml
 │   │   ├── logger.py       # Logging a consola + archivo rotativo
 │   │   └── storage.py      # Buffer SQLite con WAL
+│   ├── control/
+│   │   ├── ufw_manager.py       # Bloqueos locales con UFW
+│   │   └── websocket_client.py  # Canal de control con el backend
 │   ├── monitors/
 │   │   ├── system_monitor.py   # CPU, RAM, disco, procesos (psutil)
 │   │   ├── ssh_monitor.py      # Fuerza bruta SSH desde auth.log
 │   │   └── https_monitors.py   # Reconocimiento HTTP WordPress desde nginx
 │   └── senders/
 │       └── agent_sender.py     # Envío al backend con retry exponencial
-├── tests/
 ├── main.py                 # Punto de entrada
 └── pyproject.toml
 ```
+
+El agente requiere Python 3.11+ y sus dependencias principales son `psutil`, `requests` y `python-socketio`. Puede ejecutarse directamente con `python3 main.py` o empaquetarse mediante `agent/Dockerfile`; en producción se instala normalmente como servicio `systemd`.
 
 ---
 

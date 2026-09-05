@@ -11,6 +11,7 @@ Internet
 Nginx público (:80 / :443)
    ├── /            → frontend Angular (estático)
    ├── /api/        → backend NestJS (:3000, interno)
+   ├── /agent/      → instalador y releases del agente
    └── /socket.io/  → backend Socket.IO (:3000, interno)
                           │
                           └── PostgreSQL (:5432, interno)
@@ -24,7 +25,7 @@ Solo Nginx expone puertos públicos. Backend y PostgreSQL viven en la red intern
 
 | Archivo | Qué es |
 |---|---|
-| `docker-compose.prod.yml` | Orquesta los 4 servicios + un paso de migraciones |
+| `docker-compose.prod.yml` | Orquesta PostgreSQL, migraciones, backend, frontend y Nginx |
 | `nginx/Dockerfile` + `nginx/nginx.conf` | Reverse proxy público |
 | `.env.production.example` | Plantilla de variables (copiar a `.env.production`) |
 | `../client/Dockerfile` + `../client/nginx.conf` | Imagen estática del frontend |
@@ -68,6 +69,8 @@ Esto, en orden:
 2. Corre las migraciones Prisma (`prisma migrate deploy`) y termina.
 3. Arranca el backend (solo tras migraciones OK).
 4. Arranca el frontend y el Nginx público.
+
+El agente Python no forma parte de este Compose: se instala aparte en cada VPS monitoreado, normalmente como servicio `systemd`.
 
 ### 4. Verificar
 
@@ -134,7 +137,7 @@ con una base vacía.
 
 ## Opción B — AWS (pasos manuales de 0)
 
-Como no puedo ejecutar en tu cuenta AWS, aquí van los pasos exactos para hacerlo tú. Hay dos rutas; elige según cuánto quieras gestionar.
+Ejecutar en tu cuenta AWS, aquí van los pasos exactos para hacerlo tú. Hay dos rutas; elige según cuánto quieras gestionar.
 
 ### Ruta B1 — Una EC2 con Docker Compose (la más simple)
 
@@ -190,10 +193,9 @@ docker push <account>.dkr.ecr.<region>.amazonaws.com/lumi-backend:latest
 - [ ] Puerto 3000 del backend **no** publicado al exterior (solo `expose`, no `ports`).
 - [ ] HTTPS activo y redirección de HTTP → HTTPS.
 - [ ] Migraciones aplicadas (`prisma migrate deploy`, ya lo hace el servicio `migrate`).
-- [ ] Prueba E2E: registro → login → alta de VPS → alerta en vivo por WebSocket → correo.
 
 ## Notas
 
 - **Angular incorpora la URL en build-time.** En producción usamos `apiUrl: ''` (rutas relativas) + `fileReplacements` en `angular.json`, así el frontend llama a su propio origen y Nginx reparte. Con esta configuración el dominio no se codifica en el bundle, pero hay que reconstruir la imagen si cambias código o configuración del frontend.
-- **El agente Python no se despliega aquí.** Se instala en cada VPS cliente vía su `install.sh` + `systemd`. El proxy de `/socket.io/` ya queda listo para cuando el agente implemente su cliente Socket.IO.
+- **El agente Python no se despliega aquí.** Se instala en cada VPS cliente vía `server/public/install.sh` + `systemd`. El canal `/socket.io/` soporta tanto el namespace `/dashboard` del frontend como `/agents` del agente.
 - **Swagger** queda en `/api/docs` (el prefijo global `/api/v1` no afecta a la ruta de Swagger porque se registra por separado). Conviene restringir su acceso en producción.

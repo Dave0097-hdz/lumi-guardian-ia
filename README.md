@@ -85,9 +85,9 @@ Proyecto de un equipo de la comunidad WomenCISO & MenCISO:
 lumi-guardian/
 ├── client/     Frontend Angular          → ver client/README.md
 ├── server/     Backend NestJS + Prisma    → ver server/README.md
-├── agent/      Agente Python (en desarrollo)
-├── nginx/      Configuración de proxy reverso
-├── deploy/     Artefactos de despliegue
+├── agent/      Agente Python             → ver agent/README.md
+├── nginx/      Directorio reservado de Nginx
+├── deploy/     Despliegue Docker + Nginx  → ver deploy/README.md
 └── docker-compose.yml
 ```
 
@@ -108,6 +108,8 @@ Para el frontend y el backend por separado, consulta sus README respectivos:
 
 - [`server/README.md`](./server/README.md) — backend, base de datos, endpoints.
 - [`client/README.md`](./client/README.md) — frontend, cliente de API, WebSocket.
+- [`agent/README.md`](./agent/README.md) — instalación, configuración y ejecución del agente en un VPS.
+- [`deploy/README.md`](./deploy/README.md) — despliegue productivo del sistema central.
 
 ## Licencia
 

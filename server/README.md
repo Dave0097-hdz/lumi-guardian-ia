@@ -12,6 +12,7 @@ API REST + WebSocket del backend de LUMI Guardián AI. Autentica usuarios y agen
 - **Swagger** (`@nestjs/swagger`) como fuente de verdad de la API.
 - **Helmet** + rate limiting (`@nestjs/throttler`) en endpoints públicos.
 - **Nodemailer** + **Handlebars** para correos (bienvenida, recuperar contraseña, alertas de VPS).
+- **ESLint + Prettier** para calidad y **pnpm 10** como gestor de paquetes.
 
 ## Estructura
 
@@ -25,14 +26,17 @@ src/
 ├── bloqueos/           bloqueo/desbloqueo de IPs vía el agente
 ├── configuracion/      configuración por VPS (autonomía, umbrales, notificaciones)
 ├── whitelist/          IPs en lista blanca
-├── metricas/           métricas de sistema reportadas por el agente
 ├── agent/              endpoints que consume el agente + AgentGateway (WebSocket)
 ├── dashboard-gateway/  WebSocket con el dashboard (alertas en vivo)
+├── cron/               tareas programadas
+├── health/              comprobaciones de salud
 ├── mail/               servicio de correo + plantillas Handlebars
 ├── prisma/             PrismaService
-├── common/             guards, interceptors, filters, decorators compartidos
+├── common/             guards, filtros, decoradores y servicios compartidos
 └── main.ts
 ```
+
+Los módulos de dominio se registran en `src/app.module.ts`. El agente reporta métricas y alertas mediante el módulo `agent`; no existe un módulo independiente `metricas`.
 
 ## Modelo de datos (Prisma)
 
@@ -61,6 +65,8 @@ pnpm start:dev
 
 El backend queda en `http://localhost:3000/api/v1`.
 
+En desarrollo también se puede levantar PostgreSQL y el backend desde la raíz con Docker Compose. El override de desarrollo usa `pnpm start:debug`.
+
 ## Documentación de la API
 
 Todos los endpoints están documentados con Swagger, generado desde los controllers reales:
@@ -84,6 +90,8 @@ Dos namespaces separados, cada uno con su propia autenticación:
 
 - **`/agents`** — canal backend ↔ agente (auth con `agentToken`).
 - **`/dashboard`** — canal backend ↔ frontend (auth con el `accessToken` JWT en el handshake). Emite `nueva-alerta` al dueño del VPS cuando se detecta una amenaza, para que el dashboard se actualice sin recargar.
+
+El frontend usa el namespace `/dashboard`; el agente utiliza `/agents` para el canal de control. El proxy de producción conserva `/socket.io/` y permite el upgrade de WebSocket.
 
 ## Correo
 
@@ -112,8 +120,6 @@ Nunca se versionan secretos reales: el `.env.example` documenta las claves sin v
 | `pnpm start:dev` | Desarrollo con hot-reload |
 | `pnpm build` | Compilar a `dist/` |
 | `pnpm start:prod` | Ejecutar el build de producción |
-| `pnpm test` | Tests unitarios (Jest) |
-| `pnpm test:cov` | Tests con cobertura |
 | `pnpm lint` | ESLint con autofix |
 | `pnpm prisma:migrate` | Crear/aplicar migraciones en desarrollo |
 | `pnpm prisma:studio` | Explorador visual de la base de datos |
