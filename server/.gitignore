@@ -18,3 +18,8 @@ dist/
 
 # ─── Testing ─────────────────────────────────
 coverage/
+
+# Agent
+agent/.venv/
+agent/.ven/
+agent/lumi-agent.tar.gz

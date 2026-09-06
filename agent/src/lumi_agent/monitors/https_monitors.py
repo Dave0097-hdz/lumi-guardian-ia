@@ -37,7 +37,7 @@ UMBRAL_RAFAGA = 20
 
 class HTTPMonitor(BaseMonitor):
 
-    LOG_PATH = Path("/var/log/nginx/access.log")
+    LOG_PATH = Path("/var/log/apache2/access.log")
 
     def __init__(self, interval_seconds: float = 10.0):
         super().__init__(name="http", interval_seconds=interval_seconds)
@@ -59,10 +59,12 @@ class HTTPMonitor(BaseMonitor):
     def _detecto_rotacion(self) -> bool:
         try:
             estado = os.stat(self.LOG_PATH)
-            return estado.st_ino != self._inode
+            if estado.st_ino != self._inode:
+                return True
             if estado.st_size < self._posicion:
                 logger.info("Truncado detectado en %s", self.LOG_PATH)
                 return True
+            return False
         except FileNotFoundError:
             return True
 
@@ -77,7 +79,7 @@ class HTTPMonitor(BaseMonitor):
 
     def collect(self) -> list:
         if not self.LOG_PATH.exists():
-            logger.warning("nginx access.log no encontrado en %s", self.LOG_PATH)
+            logger.warning("apache access.log no encontrado en %s", self.LOG_PATH)  # ← cambio 3: mensaje correcto
             return []
 
         try:
