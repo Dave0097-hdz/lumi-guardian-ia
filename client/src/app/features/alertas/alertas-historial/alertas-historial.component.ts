@@ -147,12 +147,15 @@ const ACCION_LABELS: Record<string, string> = {
     <!-- Paginación -->
     <div class="pagination" *ngIf="totalPages() > 1">
       <button class="page-btn" [disabled]="page() <= 1" (click)="goToPage(page() - 1)">Anterior</button>
-      <button
-        *ngFor="let p of pagesArray()"
-        class="page-btn"
-        [class.active]="p === page()"
-        (click)="goToPage(p)"
-      >{{ p }}</button>
+      <ng-container *ngFor="let p of pagesArray()">
+        <span *ngIf="p === '...'" class="page-ellipsis">...</span>
+        <button
+          *ngIf="p !== '...'"
+          class="page-btn"
+          [class.active]="p === page()"
+          (click)="goToPage(p)"
+        >{{ p }}</button>
+      </ng-container>
       <button class="page-btn" [disabled]="page() >= totalPages()" (click)="goToPage(page() + 1)">Siguiente</button>
     </div>
   `,
@@ -289,10 +292,17 @@ const ACCION_LABELS: Record<string, string> = {
 
     .pagination {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       justify-content: center;
       gap: 6px;
       margin-top: 20px;
+    }
+
+    .page-ellipsis {
+      padding: 8px 4px;
+      color: var(--color-text-muted);
+      font-size: 0.8rem;
     }
 
     .page-btn {
@@ -342,7 +352,19 @@ export class AlertasHistorialComponent implements OnInit {
 
   pagesArray = computed(() => {
     const total = this.totalPages();
-    return Array.from({ length: total }, (_, i) => i + 1);
+    const current = this.page();
+    const delta = 2;
+    const range: (number | '...')[] = [];
+
+    for (let i = 1; i <= total; i++) {
+      if (i === 1 || i === total || (i >= current - delta && i <= current + delta)) {
+        range.push(i);
+      } else if (range[range.length - 1] !== '...') {
+        range.push('...');
+      }
+    }
+
+    return range;
   });
 
   constructor(private readonly vpsService: VpsService) {}
@@ -386,7 +408,8 @@ export class AlertasHistorialComponent implements OnInit {
     }
   }
 
-  goToPage(p: number): void {
+  goToPage(p: number | '...'): void {
+    if (p === '...') return;
     if (p < 1 || p > this.totalPages()) return;
     this.page.set(p);
     this.loadAlertas();

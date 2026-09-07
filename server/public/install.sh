@@ -71,6 +71,7 @@ if ! id -u "$AGENT_USER" >/dev/null 2>&1; then
   useradd --system --no-create-home --shell /usr/sbin/nologin "$AGENT_USER"
 fi
 usermod -aG adm "$AGENT_USER"
+usermod -aG www-data "$AGENT_USER" 2>/dev/null || true
 
 # Permiso sudo LIMITADO — solo el binario de ufw, no todo el sistema
 SUDOERS_FILE="/etc/sudoers.d/lumi-agent"
